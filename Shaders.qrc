@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>VShader.vsh</file>
+        <file>FShader.fsh</file>
+        <file>FWhite.fsh</file>
+    </qresource>
+</RCC>
