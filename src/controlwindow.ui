@@ -322,6 +322,13 @@
           </property>
          </spacer>
         </item>
+        <item>
+         <widget class="QCheckBox" name="logScaleCheckbox">
+          <property name="text">
+           <string>Log Scale</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>
@@ -574,7 +581,7 @@
            </size>
           </property>
           <property name="text">
-           <string>Top:</string>
+           <string>Left:</string>
           </property>
          </widget>
         </item>
@@ -583,7 +590,7 @@
       <item>
        <layout class="QHBoxLayout" name="variableLayoutBottom">
         <item>
-         <widget class="QLabel" name="label_6">
+         <widget class="QLabel" name="varBotLabel">
           <property name="maximumSize">
            <size>
             <width>16777215</width>
@@ -591,7 +598,7 @@
            </size>
           </property>
           <property name="text">
-           <string>Bottom:</string>
+           <string>Right:</string>
           </property>
          </widget>
         </item>
@@ -638,7 +645,7 @@
      <x>0</x>
      <y>0</y>
      <width>400</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">

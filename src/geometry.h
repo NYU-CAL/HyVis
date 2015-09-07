@@ -21,6 +21,7 @@ public:
     void drawGeometryRight(QGLShaderProgram *program);
     void drawGrid(QGLShaderProgram *program);
 
+    void setLogscale(bool log);
     void loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc);
     void setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, int q);
     void setCmapMinmax(double **minmax, int numq);
@@ -41,6 +42,7 @@ private:
     double gamma, center, slope;
     double *cmap_minmax;
     int colormap;
+    bool log;
 
 };
 

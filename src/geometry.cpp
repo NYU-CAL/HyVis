@@ -109,6 +109,11 @@ void Geometry::drawGrid(QGLShaderProgram *program)
     glDrawElements(GL_LINES, this->Ngpts, GL_UNSIGNED_INT, 0);
 }
 
+void Geometry::setLogscale(bool log)
+{
+    this->log = log;
+}
+
 void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc)
 {
     int i,j, c,d;
@@ -207,6 +212,12 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
 
     double x0 = this->cmap_minmax[0+2*q];
     double x1 = this->cmap_minmax[1+2*q];
+
+    if (this->log) {
+        x0 = log10(x0);
+        x1 = log10(x1);
+    }
+
     double m = 0.0;
     if ( (x1-x0) < 0.0000000001 ) {
         x0 = x0 - 0.5;
@@ -218,6 +229,9 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
     for (i=0; i<Nt; ++i) {
         for (j=1; j<Nr[i]; ++j) {
             double value = cells[q][i][j];
+
+            if (this->log) value = log10(value);
+
             value -= x0;
             value *= m;
 
@@ -363,6 +377,10 @@ void Geometry::getCmapValue(double val, QVector3D *color)
     r = pow(r, this->gamma);
     g = pow(g, this->gamma);
     b = pow(b, this->gamma);
+
+    if (r < 0) r = 0.0; if (r > 1) r = 1.0;
+    if (g < 0) g = 0.0; if (g > 1) g = 1.0;
+    if (b < 0) b = 0.0; if (b > 1) b = 1.0;
 
     color->setX( (float)r );
     color->setY( (float)g );

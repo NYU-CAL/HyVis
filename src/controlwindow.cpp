@@ -235,8 +235,16 @@ void ControlWindow::on_gridLcheckbox_clicked()
 
 void ControlWindow::on_rotateBtn_clicked()
 {
-    if (this->ui->rotateBtn->isChecked()) this->viewer->rotate(90);
-    else this->viewer->rotate(0);
+    if (this->ui->rotateBtn->isChecked()) {
+        this->viewer->rotate(90);
+        this->ui->varTopLbl->setText("Left:");
+        this->ui->varBotLabel->setText("Right:");
+    }
+    else {
+        this->viewer->rotate(0);
+        this->ui->varTopLbl->setText("Top:");
+        this->ui->varBotLabel->setText("Bottom:");
+    }
 }
 
 void ControlWindow::on_fileNextBtn_clicked()
@@ -544,4 +552,13 @@ void ControlWindow::on_pushButton_3_clicked()
 void ControlWindow::on_spinBox_editingFinished()
 {
     fprintf(stderr,"Editing finished");
+}
+
+void ControlWindow::on_logScaleCheckbox_clicked()
+{
+    if (this->ui->logScaleCheckbox->isChecked()) {
+        this->viewer->setLogscale(true);
+    } else {
+        this->viewer->setLogscale(false);
+    }
 }

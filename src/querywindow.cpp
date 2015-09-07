@@ -41,6 +41,11 @@ QueryWindow::~QueryWindow()
 
 void QueryWindow::setPosition(double p, double q, double r)
 {
+    double x=p, y=q, z=r;
+    p = sqrt(x*x+y*y+z*z);
+    q = atan2(y,x);
+    r = 0; // atan2( sqrt(x*x+y*y), z );
+
     this->p = p;
     this->q = q;
     this->r = r;

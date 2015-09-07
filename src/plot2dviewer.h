@@ -14,7 +14,8 @@ class Plot2DViewer : public QWidget
 public:
     explicit Plot2DViewer(QWidget *parent = 0);
     ~Plot2DViewer();
-    void updatePlot(std::vector<double> *x, std::vector<double> *y, bool isFirst);
+    void updatePlot(std::vector<double> *x, std::vector<double> *y, bool isFirst, double y0, double y1, std::string var);
+    void setTitle(std::string title);
 
 private:
     Ui::Plot2DViewer *ui;

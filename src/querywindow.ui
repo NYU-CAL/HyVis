@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>329</width>
+    <width>500</width>
     <height>150</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="maximumSize">
    <size>
@@ -27,7 +33,7 @@
        <item>
         <widget class="QLabel" name="labelP">
          <property name="text">
-          <string>X:</string>
+          <string>r:</string>
          </property>
         </widget>
        </item>
@@ -47,7 +53,7 @@
        <item>
         <widget class="QLabel" name="labelQ">
          <property name="text">
-          <string>Y:</string>
+          <string>theta:</string>
          </property>
         </widget>
        </item>
@@ -67,7 +73,7 @@
        <item>
         <widget class="QLabel" name="labelR">
          <property name="text">
-          <string>Z:</string>
+          <string>phi:</string>
          </property>
         </widget>
        </item>

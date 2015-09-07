@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     plt.hide();
 
     Viewer v;
+    v.c = &c;
     v.qw = &q;
     v.plt = &plt;
     v.setFocusPolicy(Qt::ClickFocus);

@@ -8,6 +8,8 @@
 
 #include <QDebug>
 
+#include "math.h"
+
 namespace Ui {
 class QueryWindow;
 }

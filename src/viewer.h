@@ -17,12 +17,14 @@
 #include <QWheelEvent>
 #include <QKeyEvent>
 
+class Config;
 class ControlWindow;
 
 const double DEG_RAD = M_PI / 180.;
-const int INPUT_LENGTH = 14;
+const int INPUT_LENGTH = 16;
 enum INPUT {MOUSE_LEFT, MOUSE_RIGHT, KEY_SHIFT, KEY_CTRL, KEY_LEFT, KEY_RIGHT,  // 6
-            KEY_W, KEY_A, KEY_S, KEY_D, KEY_E, KEY_C, KEY_Q, KEY_G};            // 8
+            KEY_W, KEY_A, KEY_S, KEY_D, KEY_E, KEY_C, KEY_Q, KEY_G, KEY_MINUS,  // 9
+            KEY_PLUS};            // 1
 
 class Viewer : public QGLWidget
 {
@@ -31,6 +33,7 @@ public:
     explicit Viewer(QWidget *parent = 0);
     ~Viewer();
 
+    Config *c;
     QueryWindow *qw;
     Plot2DViewer *plt;
     ControlWindow *ctrlwin;
@@ -54,6 +57,7 @@ public:
     int get_nq();
 
     // Colormap
+    void setLogscale(bool log);
     void showColorbar(bool value);
     void setGammaValue(double gamma);
     void setCenterValue(double center);

@@ -498,6 +498,34 @@ void Viewer::keyPressEvent(QKeyEvent *event)
             this->repaint();
         }
         break;
+    case Qt::Key_Equal:
+        this->input[KEY_PLUS] = true;
+        if (!this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
+            this->pointScale[0] /= 1.2;
+            this->pointScale[1] /= 1.2;
+            this->updateOrthoMatrix();
+            this->repaint();
+        }
+        break;
+    case Qt::Key_Plus:
+        this->input[KEY_PLUS] = true;
+        if (!this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
+            this->pointScale[0] /= 1.2;
+            this->pointScale[1] /= 1.2;
+            this->updateOrthoMatrix();
+            this->repaint();
+        }
+        break;
+    case Qt::Key_Minus:
+        this->input[KEY_MINUS] = true;
+        if (!this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
+            this->pointScale[0] *= 1.2;
+            this->pointScale[1] *= 1.2;
+            this->updateOrthoMatrix();
+            this->repaint();
+        }
+        break;
+
     case Qt::Key_G:
         this->input[KEY_G] = true;
         if (!this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
@@ -556,6 +584,15 @@ void Viewer::keyReleaseEvent(QKeyEvent *event)
     case Qt::Key_Q:
         this->input[KEY_Q] = false;
         break;
+    case Qt::Key_Plus:
+        this->input[KEY_PLUS] = false;
+        break;
+    case Qt::Key_Equal:
+        this->input[KEY_PLUS] = false;
+        break;
+    case Qt::Key_Minus:
+        this->input[KEY_MINUS] = false;
+        break;
     case Qt::Key_Left:
         this->input[KEY_LEFT] = false;
         if (!this->input[KEY_SHIFT] && !this->input[KEY_CTRL]) this->ctrlwin->on_filePrevBtn_clicked();
@@ -585,7 +622,9 @@ void Viewer::update1DPlot(int x, int y, bool isFirst)
     else n = this->filedata.getValuesAtR(ttx, tty, this->leftDisplayVar, &xdata, &ydata);
     if (n<1) return;
 
-    this->plt->updatePlot(&xdata, &ydata, isFirst);
+    double y0 = this->filedata.get_minmax()[0][this->leftDisplayVar];
+    double y1 = this->filedata.get_minmax()[1][this->leftDisplayVar];
+    this->plt->updatePlot(&xdata,&ydata, isFirst, y0,y1, c->getName(this->leftDisplayVar).toStdString());
     this->plotLineData[0] = xdata.at(0);
     this->plotLineData[1] = xdata.at(n-1);
 
@@ -803,6 +842,24 @@ void Viewer::cycleCmap()
 int Viewer::get_nq()
 {
     return this->filedata.get_nq();
+}
+
+void Viewer::setLogscale(bool log)
+{
+    this->g.setLogscale(log);
+    this->g.setValue(true,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->leftDisplayVar);
+    this->g.setValue(false,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->rightDisplayVar);
+    this->repaint();
 }
 
 void Viewer::showColorbar(bool value)

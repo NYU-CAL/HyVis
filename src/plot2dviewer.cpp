@@ -7,6 +7,8 @@ Plot2DViewer::Plot2DViewer(QWidget *parent) :
 {
     ui->setupUi(this);
     this->ui->plotwindow->addGraph();
+    this->ui->plotwindow->plotLayout()->insertRow(0);
+    this->setTitle("None");
 }
 
 Plot2DViewer::~Plot2DViewer()
@@ -14,22 +16,19 @@ Plot2DViewer::~Plot2DViewer()
     delete ui;
 }
 
-void Plot2DViewer::updatePlot(std::vector<double> *x, std::vector<double> *y, bool isFirst)
+void Plot2DViewer::updatePlot(std::vector<double> *x, std::vector<double> *y, bool isFirst, double y0, double y1, std::string var)
 {
     int i;
     QVector<double> xx(x->size());
     QVector<double> yy(x->size());
-    double xmin, xmax, ymin, ymax;
+    double xmin, xmax;
     xmin = x->at(0); xmax = x->at(0);
-    ymin = y->at(0); ymax = y->at(0);
 
     for (i=0; i<(int)x->size(); ++i) {
         xx[i] = x->at(i);
         yy[i] = y->at(i);
         if (xx[i] < xmin) xmin = xx[i];
         if (xx[i] > xmax) xmax = xx[i];
-        if (yy[i] < ymin) ymin = yy[i];
-        if (yy[i] > ymax) ymax = yy[i];
     }
 
     this->ui->plotwindow->graph(0)->setData(xx,yy);
@@ -37,13 +36,15 @@ void Plot2DViewer::updatePlot(std::vector<double> *x, std::vector<double> *y, bo
 
     if (isFirst || !isFirst) {
         this->ui->plotwindow->xAxis->setRange(xmin, xmax);
-        this->ui->plotwindow->yAxis->setRange(0.0, 16.0); //ymin, ymax);
+        this->ui->plotwindow->yAxis->setRange(y0, y1);
     }
 
+    this->setTitle(var);
+}
 
-    /*
-    // give the axes some labels:
-    customPlot->xAxis->setLabel("x");
-    customPlot->yAxis->setLabel("y");
-    */
+void Plot2DViewer::setTitle(std::string title)
+{
+    try { this->ui->plotwindow->plotLayout()->removeAt(0); }
+    catch(int e) { ; }
+    this->ui->plotwindow->plotLayout()->addElement(0,0, new QCPPlotTitle(this->ui->plotwindow, title.c_str()));
 }

@@ -97,6 +97,8 @@ private slots:
 
     void on_spinBox_editingFinished();
 
+    void on_logScaleCheckbox_clicked();
+
 private:
     std::vector <QPushButton *> topBtns;
     std::vector <QPushButton *> botBtns;
