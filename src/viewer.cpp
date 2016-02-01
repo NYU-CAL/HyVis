@@ -21,9 +21,9 @@ Viewer::Viewer(QWidget *parent) :
     this->clickCenter[0] = 0.0;
     this->clickCenter[1] = 0.0;
 
-    this->bgColor[0] = 0.6;
-    this->bgColor[1] = 0.6;
-    this->bgColor[2] = 0.6;
+    this->bgColor[0] = 107;
+    this->bgColor[1] = 107;
+    this->bgColor[2] = 107;
 
     this->rotateAngle = 90;
     this->isMirrored = false;
@@ -31,6 +31,8 @@ Viewer::Viewer(QWidget *parent) :
     this->drawColorbar = true;
 
     this->squareScale();
+
+    this->drawScale = true; // TODO: Default value?
 
     // Draw box setup
     this->drawBox = false;
@@ -188,6 +190,7 @@ void Viewer::rotate(double angle)
 void Viewer::setIsMirrored(bool mirror)
 {
     this->isMirrored = mirror;
+    if ( !this->filedata.fileLoaded ) return;
     if (mirror) {
         if (this->rightDisplayVar != -1) this->setRightValue(this->rightDisplayVar);
         else this->setRightValue(0);
@@ -207,8 +210,6 @@ void Viewer::setIsDoubleMirrored(bool doublemirrored)
 
 void Viewer::initializeGL()
 {
-    glClearColor(this->bgColor[0], this->bgColor[1], this->bgColor[2], 0.0f);
-
     this->initShaders();
     this->program.bind();
     this->updateOrthoMatrix();
@@ -222,10 +223,25 @@ void Viewer::resizeGL(int w, int h)
     glViewport(0, 0, (GLint)w, (GLint)h);
 }
 
-void Viewer::paintGL()
+void Viewer::paintEvent(QPaintEvent *event)
 {
-    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
+    Q_UNUSED(event);
 
+    QPainter p( this );
+    p.beginNativePainting();
+
+    // Save gl state
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    // Clear the screen
+    qglClearColor(QColor(this->bgColor[0], this->bgColor[1], this->bgColor[2]));
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    this->program.bind();
     program.setUniformValue("ortho_matrix", this->matrix);
     this->g.drawGeometryLeft(&this->program);
 
@@ -276,8 +292,8 @@ void Viewer::paintGL()
             int i;
             double t1, t2;
             t1 = this->plotLineData[0];
-            for (i=1; i<100; ++i) {
-                t2 = this->plotLineData[0] * (1.0 - i / 100.0) + this->plotLineData[1] * (i / 100.0);
+            for (i=1; i<200; ++i) {
+                t2 = this->plotLineData[0] * (1.0 - i / 200.0) + this->plotLineData[1] * (i / 200.0);
                 glVertex3f(this->plotLineData[2] * cos(t1), this->plotLineData[2] * sin(t1), 0.0);
                 glVertex3f(this->plotLineData[2] * cos(t2), this->plotLineData[2] * sin(t2), 0.0);
                 t1 = t2;
@@ -287,21 +303,22 @@ void Viewer::paintGL()
         this->program.bind();
     }
 
-    // Draw colorbar
+    // Draw colorbar & scale
     if (this->drawColorbar) {
         int i; QVector3D col;
         QMatrix4x4 ident; ident.setToIdentity();
         this->whiteprogram.bind();
         this->whiteprogram.setUniformValue("ortho_matrix", ident);
 
-        int cbar_res = 100; // <-- Feel free to edit this
+        // Draw the colorbar itself
+        int cbar_res = 200; // <-- Feel free to edit this
         double ymodifier = 1.9 / cbar_res;
         for (i=0; i<cbar_res; ++i) {
             this->g.getCmapValue((1.0 * i) / cbar_res, &col);
             this->whiteprogram.setUniformValue("const_color", col.x(), col.y(), col.z());
             glBegin(GL_QUADS);
-            glVertex3f(0.85, -0.95 + i * ymodifier, 0.0); glVertex3f(0.85, -0.95 + (i+1) * ymodifier, 0.0);
-            glVertex3f(0.95, -0.95 + (i+1) * ymodifier, 0.0); glVertex3f(0.95, -0.95 + i * ymodifier, 0.0);
+            glVertex3f(0.88, -0.95 + i * ymodifier, 0.0); glVertex3f(0.88, -0.95 + (i+1) * ymodifier, 0.0);
+            glVertex3f(0.98, -0.95 + (i+1) * ymodifier, 0.0); glVertex3f(0.98, -0.95 + i * ymodifier, 0.0);
             glEnd();
         }
 
@@ -325,6 +342,48 @@ void Viewer::paintGL()
         glVertex3f(c, b, 0.0); glVertex3f(a, b, 0.0);
         glEnd();
         this->program.bind();
+    }
+
+    // Restore gl state
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    glPopAttrib();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    p.endNativePainting();
+
+    // Now we can call normal QPainter methods.
+
+    // Set up painter for text
+    p.setRenderHint(QPainter::TextAntialiasing);
+    p.setPen(Qt::white);
+    QFont f = p.font();
+    f.setPointSize(10);
+    p.setFont(f);
+
+    // Draw colorbar scale
+    if (this->drawColorbar) {
+        int i;
+        int marks = 5;
+        int x1 = 0.935 * width();
+        int y0 = height() * 1.95 / 2.0;
+        int dy = height() * 1.9 / 2.0 / marks;
+        char buf[16];
+        double val;
+        for (i=0; i<=marks; ++i) {
+            this->g.unitToTrue((double)i / (double)marks, &val);
+            sprintf(buf, "%.2e", val);
+            p.drawText(0, 0, x1, y0-(i*dy)+5, Qt::AlignBottom | Qt::AlignRight, buf);
+        }
+    }
+
+    // Draw normal scale
+    if (this->drawScale) {
+        // TODO ... naive method isn't smart.
     }
 }
 
@@ -535,6 +594,12 @@ void Viewer::keyPressEvent(QKeyEvent *event)
             this->repaint();
         }
         break;
+    case Qt::Key_L:
+        this->input[KEY_L] = true;
+        if (!this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
+            this->setLogscale(this->ctrlwin->toggleLogscale());
+        }
+        break;
     case Qt::Key_Q:
         this->input[KEY_Q] = true;
         if (this->input[KEY_CTRL]) {
@@ -613,6 +678,8 @@ void Viewer::keyReleaseEvent(QKeyEvent *event)
 
 void Viewer::update1DPlot(int x, int y, bool isFirst)
 {
+    if (! this->filedata.fileLoaded ) return;
+
     int n=0;
     double ttx, tty;
     std::vector<double> xdata, ydata;
@@ -711,10 +778,9 @@ void Viewer::updateOrthoMatrix(bool updateControl)
 
 void Viewer::setBgColor(double r, double g, double b)
 {
-    this->bgColor[0] = (float)r;
-    this->bgColor[1] = (float)g;
-    this->bgColor[2] = (float)b;
-    glClearColor(this->bgColor[0], this->bgColor[1], this->bgColor[2], 0.0f);
+    this->bgColor[0] = (int) (r*255);
+    this->bgColor[1] = (int) (g*255);
+    this->bgColor[2] = (int) (b*255);
     this->repaint();
 }
 
@@ -844,8 +910,47 @@ int Viewer::get_nq()
     return this->filedata.get_nq();
 }
 
+void Viewer::rescale(int i)
+{
+    if ( !this->filedata.fileLoaded ) return;
+
+    // Zoom to a size capable of displaying full data
+    if (i == 1) {
+
+        double *tjph = this->filedata.get_tjph();
+        double **riph = this->filedata.get_riph();
+
+        double r0 = riph[0][0];
+        double r1 = riph[0][this->filedata.get_nr()[0]-1];
+        double t0 = tjph[0];
+        double t1 = tjph[this->filedata.get_nt()-1];
+
+        if (this->rotateAngle > 45) {
+            t0 += M_PI / 2;
+            t1 += M_PI / 2;
+        }
+
+        double xmin = fmin(r0*cos(t1), r1*cos(t1));
+        double xmax = r1*cos(t0);
+        double ymin = fmin(r0*sin(t0), r0*sin(t1));
+        double ymax = fmax(r1*sin(t0), r1*sin(t1));
+
+        double dx = 0.02 * (xmax - xmin);
+        double dy = 0.02 * (ymax - ymin);
+
+        this->setByAxes(xmin-dx, xmax+dx, ymin-dy, ymax+dy);
+        this->squareScale();
+    }
+}
+
+void Viewer::showScale(bool value)
+{
+    this->drawScale = value;
+}
+
 void Viewer::setLogscale(bool log)
 {
+    if ( !this->filedata.fileLoaded ) return;
     this->g.setLogscale(log);
     this->g.setValue(true,
                      this->filedata.get_nt(),

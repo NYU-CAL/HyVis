@@ -8,7 +8,6 @@ Plot2DViewer::Plot2DViewer(QWidget *parent) :
     ui->setupUi(this);
     this->ui->plotwindow->addGraph();
     this->ui->plotwindow->plotLayout()->insertRow(0);
-    this->setTitle("None");
 }
 
 Plot2DViewer::~Plot2DViewer()

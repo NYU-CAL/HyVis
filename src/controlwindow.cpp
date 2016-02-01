@@ -8,16 +8,170 @@ ControlWindow::ControlWindow(QWidget *parent) :
     ui->setupUi(this);
 
     this->openFilename = QDir::currentPath();
-    this->ui->bgColorBtn->setStyleSheet("background-color: #999999");
+    this->ui->bgColorBtn->setStyleSheet("background-color: #6b6b6b;");
     this->openFileIndex = -1;
 
     this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-    this->bgColor.setRgb(153, 153, 153);
+    this->bgColor.setRgb(107, 107, 107);
+
+    this->fileIsOpen = false;
+
+    this->ui->statusBar->setText(QString(""));
+    this->ui->statusBar_bottom->setText(QString(""));
+    this->ui->statusBar_bottom->setStyleSheet("QLabel { color : \"#ff0000\"; }");
+
+    // Check for updates
+    if (true) {
+        try {
+            QNetworkAccessManager * manager = new QNetworkAccessManager(this);
+            connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(onFileReady(QNetworkReply*)) );
+            manager->get(QNetworkRequest(QUrl("https://raw.githubusercontent.com/NYU-CAL/HyVis/master/VERSION")));
+        } catch (...) { }
+    }
+
+    this->ui->scaleCheckbox->hide(); // TODO: flesh out features
+
+    this->resize(0,0);
 }
 
 ControlWindow::~ControlWindow()
 {
     delete ui;
+}
+
+void ControlWindow::loadFileFull(QString reqFilename)
+{
+    // First we attempt to load the file. Only if we're successful do we proceed...
+    if ( !this->viewer->loadFile(reqFilename.toStdString().c_str()) ) return;
+
+    this->openFilename = reqFilename;
+    this->fileIsOpen = true;
+
+    // Proceed iff above was successful
+    this->ui->fdirEdit->setText( this->openFilename.left(this->openFilename.lastIndexOf("/")) );
+    this->ui->fnameEdit->setText( this->openFilename.right(this->openFilename.length() - 1 - this->openFilename.lastIndexOf("/") ) );
+    this->updateConfigWindow();
+    this->updateVariableBtns();
+
+    this->home = QDir( this->openFilename.left(this->openFilename.lastIndexOf("/")) );
+
+    int i = 0;
+    QStringList files = home.entryList();
+    for (QString s : files) {
+        QString stripped = s.right(s.length() - s.lastIndexOf(".") );
+        if (QString::compare(stripped, QString(".h5")) == 0) {
+            this->filesInHome.push_back(s);
+            if (QString::compare(s, this->openFilename.right(this->openFilename.length() - 1 - this->openFilename.lastIndexOf("/") )) == 0)
+                this->openFileIndex = i; // Woo-ee!
+            i++;
+        }
+    }
+
+    this->ui->spinBox_2->setValue(this->filesInHome.size());
+}
+
+void ControlWindow::loadConfigFile(QString configFilename)
+{
+    std::string line;
+    std::vector<std::string> tokens;
+
+    std::string cfgOpenFile, cfgHomeDir;
+    int c0 = 0;
+
+    std::ifstream fp(configFilename.toStdString().c_str());
+    if (! fp.is_open()) return;
+
+    while (getline(fp, line)) {
+        tokens = this->split(line);
+        if (tokens.size() < 1) continue;
+
+        if (tokens.at(0).compare("VERSION") == 0) {
+            double load_version = QString(tokens.at(1).c_str()).toDouble(); // TODO warning
+            Q_UNUSED(load_version);
+        } else if (tokens.at(0).compare("BGCOLOR") == 0) {
+            int r = QString(tokens.at(1).c_str()).toInt();
+            int g = QString(tokens.at(2).c_str()).toInt();
+            int b = QString(tokens.at(3).c_str()).toInt();
+
+            QString fmt;
+            fmt.sprintf("background-color: #%02x%02x%02x", r,g,b);
+            this->bgColor.setRgb(r,g,b);
+            this->ui->bgColorBtn->setStyleSheet(fmt);
+            this->viewer->setBgColor(r / 255.0, g / 255.0, b / 255.0);
+
+        } else if (tokens.at(0).compare("ROTATE") == 0) {
+            if (tokens.at(1).compare("TRUE") == 0) {
+                this->viewer->rotate(90);
+                this->ui->rotateBtn->setChecked(true);
+            } else {
+                this->viewer->rotate(0);
+                this->ui->rotateBtn->setChecked(false);
+            }
+
+        } else if (tokens.at(0).compare("MIRROR") == 0) {
+            if (tokens.at(1).compare("TRUE") == 0) this->ui->mirrorCheckbox->setChecked(true);
+            else this->ui->mirrorCheckbox->setChecked(false);
+            if (tokens.at(2).compare("TRUE") == 0) this->ui->mirror4xCheckbox->setChecked(true);
+            else this->ui->mirror4xCheckbox->setChecked(false);
+            this->on_mirrorCheckbox_clicked();
+            this->on_mirror4xCheckbox_clicked();
+
+        } else if (tokens.at(0).compare("AXES") == 0) {
+            double x0 = QString(tokens.at(1).c_str()).toDouble();
+            double x1 = QString(tokens.at(2).c_str()).toDouble();
+            double y0 = QString(tokens.at(3).c_str()).toDouble();
+            double y1 = QString(tokens.at(4).c_str()).toDouble();
+            // TODO set
+            Q_UNUSED(x0);
+            Q_UNUSED(x1);
+            Q_UNUSED(y0);
+            Q_UNUSED(y1);
+
+        } else if (tokens.at(0).compare("COLORBAR") == 0) {
+            if (tokens.at(1).compare("TRUE") == 0) {
+                this->viewer->showColorbar(true);
+                this->ui->colorbarCheckbox->setChecked(true);
+            } else {
+                this->viewer->showColorbar(false);
+                this->ui->colorbarCheckbox->setChecked(false);
+            }
+
+        } else if (tokens.at(0).compare("CBAR_GAMMA") == 0) {
+            int gam = QString(tokens.at(1).c_str()).toInt();
+            this->ui->horizontalSlider->setValue(gam);
+            if (this->fileIsOpen)
+                this->viewer->setGammaValue(gam / 99.0);
+
+        } else if (tokens.at(0).compare("CBAR_CENTER") == 0) {
+            int center = QString(tokens.at(1).c_str()).toInt();
+            this->ui->horizontalSlider_2->setValue(center);
+            if (this->fileIsOpen)
+                this->viewer->setCenterValue(center / 99.0);
+
+        } else if (tokens.at(0).compare("CBAR_SLOPE") == 0) {
+            int slope = QString(tokens.at(1).c_str()).toInt();
+            this->ui->horizontalSlider_3->setValue(slope);
+            if (this->fileIsOpen)
+                this->viewer->setSlopeValue(slope / 99.0 * 4.0 + 1.0);
+
+        } else if (tokens.at(0).compare("OPEN_FILE") == 0) {
+            cfgOpenFile = tokens.at(1);
+            c0++;
+
+        } else if (tokens.at(0).compare("OPEN_DIR") == 0) {
+            cfgHomeDir = tokens.at(1);
+            c0++;
+
+        } else {
+            fprintf(stderr, "Unhandled: %s\n", line.c_str());
+        }
+    }
+
+    if (c0 == 2) {
+        this->loadFileFull( QString::fromStdString(cfgHomeDir + "/" + cfgOpenFile) );
+    }
+
+    fp.close();
 }
 
 void ControlWindow::closeEvent(QCloseEvent *event)
@@ -81,32 +235,8 @@ void ControlWindow::on_openFileBtn_clicked()
     QString reqFilename = QFileDialog::getOpenFileName(this, "Select a file...", this->openFilename, NULL);
     if (reqFilename == "") return;
 
-    // First we attempt to load the file. Only if we're successful do we proceed...
-    if ( !this->viewer->loadFile(reqFilename.toStdString().c_str()) ) return;
-
-    this->openFilename = reqFilename;
-
-    // Proceed iff above was successful
-    this->ui->fdirEdit->setText( this->openFilename.left(this->openFilename.lastIndexOf("/")) );
-    this->ui->fnameEdit->setText( this->openFilename.right(this->openFilename.length() - 1 - this->openFilename.lastIndexOf("/") ) );
-    this->updateConfigWindow();
-    this->updateVariableBtns();
-
-    this->home = QDir( this->openFilename.left(this->openFilename.lastIndexOf("/")) );
-
-    int i = 0;
-    QStringList files = home.entryList();
-    for (QString s : files) {
-        QString stripped = s.right(s.length() - s.lastIndexOf(".") );
-        if (QString::compare(stripped, QString(".h5")) == 0) {
-            this->filesInHome.push_back(s);
-            if (QString::compare(s, this->openFilename.right(this->openFilename.length() - 1 - this->openFilename.lastIndexOf("/") )) == 0)
-                this->openFileIndex = i; // Woo-ee!
-            i++;
-        }
-    }
-
-    this->ui->spinBox_2->setValue(this->filesInHome.size());
+    this->loadFileFull(reqFilename);
+    this->viewer->rescale(1);
 }
 
 void ControlWindow::on_pushButton_clicked()
@@ -150,10 +280,14 @@ void ControlWindow::updateVariableBtns()
         QPushButton *btnTop = new QPushButton( this->config->getName(i) );
         QPushButton *btnBot = new QPushButton( this->config->getName(i) );
         if (! this->ui->mirrorCheckbox->isChecked()) btnBot->setEnabled(false);
-        if (i==0) {
+        if (this->viewer->leftDisplayVar == -1 && i == 0)
             btnTop->setStyleSheet("color: #ff2200");
+        if (this->viewer->rightDisplayVar == -1 && i==0)
             btnBot->setStyleSheet("color: #ff2200");
-        }
+        if (this->viewer->leftDisplayVar == i)
+            btnTop->setStyleSheet("color: #ff2200");
+        if (this->viewer->rightDisplayVar == i)
+            btnBot->setStyleSheet("color: #ff2200");
         signalMapperTop->setMapping(btnTop, i);
         signalMapperBot->setMapping(btnBot, i);
         connect( btnTop, SIGNAL(clicked()), signalMapperTop, SLOT(map()) );
@@ -194,6 +328,18 @@ void ControlWindow::toggleGrid(bool shown)
 void ControlWindow::toggleColorbar(bool shown)
 {
     // TODO
+    Q_UNUSED(shown);
+}
+
+bool ControlWindow::toggleLogscale()
+{
+    if (this->ui->logScaleCheckbox->isChecked()) {
+        this->ui->logScaleCheckbox->setChecked(false);
+        return false;
+    } else {
+        this->ui->logScaleCheckbox->setChecked(true);
+        return true;
+    }
 }
 
 void ControlWindow::setColorbarBounds(double **minmax, int var)
@@ -404,93 +550,19 @@ void ControlWindow::on_actionSave_Config_triggered()
     fp << "COLORBAR " << (this->ui->colorbarCheckbox->isChecked() ? "TRUE\n":"FALSE\n");
     fp << "CBAR_GAMMA " << this->ui->horizontalSlider->value();
     fp << "\nCBAR_CENTER " << this->ui->horizontalSlider_2->value();
-    fp << "\nCBAR_SLOPE " << this->ui->horizontalSlider_3->value() << "\n";
+    fp << "\nCBAR_SLOPE " << this->ui->horizontalSlider_3->value();
+    fp << "\nOPEN_FILE " << this->ui->fnameEdit->text().toStdString();
+    fp << "\nOPEN_DIR " << this->ui->fdirEdit->text().toStdString() << "\n";
     fp << "\n";
     fp.close();
 }
 
 void ControlWindow::on_actionLoad_Config_triggered()
 {
-    std::string line;
-    std::vector<std::string> tokens;
-
     QString configFilename = QFileDialog::getOpenFileName(this, "Configuration file...", this->openFilename, NULL);
     if (configFilename == "") return;
 
-    std::ifstream fp(configFilename.toStdString().c_str());
-    if (! fp.is_open()) return;
-
-    while (getline(fp, line)) {
-        tokens = this->split(line);
-        if (tokens.size() < 1) continue;
-
-        if (tokens.at(0).compare("VERSION") == 0) {
-            double load_version = QString(tokens.at(1).c_str()).toDouble(); // TODO warning
-        } else if (tokens.at(0).compare("BGCOLOR") == 0) {
-            int r = QString(tokens.at(1).c_str()).toInt();
-            int g = QString(tokens.at(2).c_str()).toInt();
-            int b = QString(tokens.at(3).c_str()).toInt();
-
-            QString fmt;
-            fmt.sprintf("background-color: #%02x%02x%02x", r,g,b);
-            this->bgColor.setRgb(r,g,b);
-            this->ui->bgColorBtn->setStyleSheet(fmt);
-            this->viewer->setBgColor(r / 255.0, g / 255.0, b / 255.0);
-
-        } else if (tokens.at(0).compare("ROTATE") == 0) {
-            if (tokens.at(1).compare("TRUE") == 0) {
-                this->viewer->rotate(90);
-                this->ui->rotateBtn->setChecked(true);
-            } else {
-                this->viewer->rotate(0);
-                this->ui->rotateBtn->setChecked(false);
-            }
-
-        } else if (tokens.at(0).compare("MIRROR") == 0) {
-            if (tokens.at(1).compare("TRUE") == 0) this->ui->mirrorCheckbox->setChecked(true);
-            else this->ui->mirrorCheckbox->setChecked(false);
-            if (tokens.at(2).compare("TRUE") == 0) this->ui->mirror4xCheckbox->setChecked(true);
-            else this->ui->mirror4xCheckbox->setChecked(false);
-            this->on_mirrorCheckbox_clicked();
-            this->on_mirror4xCheckbox_clicked();
-
-        } else if (tokens.at(0).compare("AXES") == 0) {
-            double x0 = QString(tokens.at(1).c_str()).toDouble();
-            double x1 = QString(tokens.at(2).c_str()).toDouble();
-            double y0 = QString(tokens.at(3).c_str()).toDouble();
-            double y1 = QString(tokens.at(4).c_str()).toDouble();
-            // TODO set
-
-        } else if (tokens.at(0).compare("COLORBAR") == 0) {
-            if (tokens.at(1).compare("TRUE") == 0) {
-                this->viewer->showColorbar(true);
-                this->ui->colorbarCheckbox->setChecked(true);
-            } else {
-                this->viewer->showColorbar(false);
-                this->ui->colorbarCheckbox->setChecked(false);
-            }
-
-        } else if (tokens.at(0).compare("CBAR_GAMMA") == 0) {
-            int gam = QString(tokens.at(1).c_str()).toInt();
-            this->ui->horizontalSlider->setValue(gam);
-            this->viewer->setGammaValue(gam / 99.0);
-
-        } else if (tokens.at(0).compare("CBAR_CENTER") == 0) {
-            int center = QString(tokens.at(1).c_str()).toInt();
-            this->ui->horizontalSlider_2->setValue(center);
-            this->viewer->setCenterValue(center / 99.0);
-
-        } else if (tokens.at(0).compare("CBAR_SLOPE") == 0) {
-            int slope = QString(tokens.at(1).c_str()).toInt();
-            this->ui->horizontalSlider_3->setValue(slope);
-            this->viewer->setSlopeValue(slope / 99.0 * 4.0 + 1.0);
-
-        } else {
-            fprintf(stderr, "Unhandled: %s\n", line.c_str());
-        }
-    }
-
-    fp.close();
+    this->loadConfigFile(configFilename);
 }
 
 std::vector<std::string> ControlWindow::split(std::string const &input) {
@@ -501,6 +573,23 @@ std::vector<std::string> ControlWindow::split(std::string const &input) {
               std::istream_iterator<std::string>(),
               std::back_inserter(ret));
     return ret;
+}
+
+void ControlWindow::onFileReady(QNetworkReply *reply)
+{
+    try {
+        int i;
+        QStringList rep = QString(reply->readAll()).split(QRegExp("\\s"));
+        for (i=0; i<rep.size(); ++i) {
+            if ( rep.at(i).compare("VERSION") == 0 ) {
+                double cverr = rep.at(i+1).toFloat();
+                if ((cverr - HV_VERSION) > 0.01) {
+                    this->ui->statusBar_bottom->setText("HV " + rep.at(i+1) + \
+                        " is available. Currently HV " + QString::number(HV_VERSION) + ".");
+                }
+            }
+        }
+    } catch (...) { }
 }
 
 void ControlWindow::on_cbarmin_editingFinished()
@@ -561,4 +650,9 @@ void ControlWindow::on_logScaleCheckbox_clicked()
     } else {
         this->viewer->setLogscale(false);
     }
+}
+
+void ControlWindow::on_scaleCheckbox_clicked()
+{
+
 }

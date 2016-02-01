@@ -21,17 +21,8 @@ FileData::FileData()
 
 FileData::~FileData()
 {
-    if (this->fileLoaded) {
-        int i;
-        free(this->Nr);
-        free(this->t_jph);
-        for (i=0; i<this->numTheta; ++i) {
-            free(this->r_iph[i]);
-        }
-        free(this->r_iph);
-        // TODO, free cells
-        // TODO, free minmax
-    }
+    this->freeAll();
+    free(this->minmax);
 }
 
 bool FileData::loadFromFile(const char *filename)
@@ -44,9 +35,11 @@ bool FileData::loadFromFile(const char *filename)
     int glo_size[2];
     int *tindex;
 
+    #if FILEDATA_VERBOSE
     fprintf(stderr, "Loading data from file: %s\n", filename);
+    #endif
 
-    hid_t h5file = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t h5file = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (h5file < 0) {
         fprintf(stderr, "Unable to open h5 file.\n");
         return false;
@@ -62,22 +55,7 @@ bool FileData::loadFromFile(const char *filename)
 
     // For alpha purposes, we can assume this is the commit point -- and we'll free all memory...
     this->fileLoaded = false;
-    if (this->t_jph != NULL) free(this->t_jph);
-    if (this->Nr != NULL) free(this->Nr);
-    if (this->minmax[0] != NULL) free(this->minmax[0]);
-    if (this->minmax[1] != NULL) free(this->minmax[1]);
-
-    for (i=0; i<this->numTheta; ++i) {
-        if (this->r_iph != NULL && this->r_iph[i] != NULL) free(this->r_iph[i]);
-        if (this->cells != NULL) {
-            for (j=0; j<this->numQ; ++j) {
-                if (this->cells[j][i] != NULL) free(this->cells[j][i]);
-            }
-        }
-    }
-    if (cells != NULL) for (j=0; j<this->numQ; ++j) if (this->cells[j] != NULL) free(this->cells[j]);
-    if (this->cells != NULL) free(this->cells);
-    if (this->r_iph != NULL) free(this->r_iph);
+    this->freeAll();
 
     // First step is loading the grid information
 
@@ -176,7 +154,10 @@ bool FileData::loadFromFile(const char *filename)
     free(tindex);
 
     this->fileLoaded = true;
+
+    #if FILEDATA_VERBOSE
     fprintf(stderr, "Done loading data.\n");
+    #endif
 
     return true;
 }
@@ -262,7 +243,7 @@ void FileData::getValuesAt(double x, double y, double *values)
 
     // Updates the values
     for (k=0; k<this->numQ; ++k) {
-        values[k] = this->cells[k][i][j];
+        values[k] = this->cells[k][i][j+1];
     }
 }
 
@@ -345,4 +326,36 @@ void FileData::readPatch(hid_t *h5dst, void *data, hid_t type, int *start, int *
 
     H5Sclose(mspace);
     H5Sclose(fspace);
+}
+
+// In a surprising twist, freeAll does not actually free
+// this->minmax.
+void FileData::freeAll()
+{
+    if ( !this->fileLoaded ) return;
+
+    if (this->Nr != NULL) free(this->Nr);
+    if (this->t_jph != NULL) free(this->t_jph);
+
+    if (this->minmax != NULL) {
+        if (this->minmax[0] != NULL) free(this->minmax[0]);
+        if (this->minmax[1] != NULL) free(this->minmax[1]);
+    }
+
+    int i,j;
+    for (i=0; i<this->numTheta; ++i) {
+        if (this->r_iph != NULL && this->r_iph[i] != NULL) free(this->r_iph[i]);
+        if (this->cells != NULL) {
+            for (j=0; j<this->numQ; ++j) {
+                if (this->cells[j][i] != NULL) free(this->cells[j][i]);
+            }
+        }
+    }
+
+    if (this->r_iph != NULL) free(this->r_iph);
+    if (this->cells != NULL) {
+        for (j=0; j<this->numQ; ++j) if (this->cells[j] != NULL) free(this->cells[j]);
+        free(this->cells);
+    }
+
 }

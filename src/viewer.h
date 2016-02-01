@@ -21,10 +21,10 @@ class Config;
 class ControlWindow;
 
 const double DEG_RAD = M_PI / 180.;
-const int INPUT_LENGTH = 16;
+const int INPUT_LENGTH = 17;
 enum INPUT {MOUSE_LEFT, MOUSE_RIGHT, KEY_SHIFT, KEY_CTRL, KEY_LEFT, KEY_RIGHT,  // 6
             KEY_W, KEY_A, KEY_S, KEY_D, KEY_E, KEY_C, KEY_Q, KEY_G, KEY_MINUS,  // 9
-            KEY_PLUS};            // 1
+            KEY_PLUS, KEY_L};            // 2
 
 class Viewer : public QGLWidget
 {
@@ -55,8 +55,10 @@ public:
     void setLeftValue(int n);
     void setRightValue(int n);
     int get_nq();
+    void rescale(int i);
 
     // Colormap
+    void showScale(bool value);
     void setLogscale(bool log);
     void showColorbar(bool value);
     void setGammaValue(double gamma);
@@ -76,7 +78,7 @@ public:
 protected:
     void initializeGL();
     void resizeGL(int w, int h);
-    void paintGL();
+    void paintEvent(QPaintEvent *event);
 
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
@@ -101,9 +103,10 @@ private:
     double pointScale[2];
     double clickPoint[2];
     double clickCenter[2];
-    float bgColor[3];
+    int bgColor[3];
 
     bool drawBox;
+    bool drawScale;
     bool drawColorbar;
     bool drawGridL, drawGridR;
     double drawBoxCoordinates[4];

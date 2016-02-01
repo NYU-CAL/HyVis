@@ -12,8 +12,9 @@
 #include <querywindow.h>
 #include <plot2dviewer.h>
 #include <sstream>
+#include <QNetworkReply>
 
-#define HV_VERSION 0.5
+#define HV_VERSION 0.6
 
 class Viewer;
 
@@ -28,11 +29,14 @@ class ControlWindow : public QMainWindow
 public:
     explicit ControlWindow(QWidget *parent = 0);
     ~ControlWindow();
+    void loadFileFull(QString reqFilename);
+    void loadConfigFile(QString configFilename);
     void updateVariableBtns();
     void updateConfigWindow();
     void updateAxesInfo(double x0, double x1, double y0, double y1);
     void toggleGrid(bool shown);
     void toggleColorbar(bool shown);
+    bool toggleLogscale();
     void setColorbarBounds(double **minmax, int var);
     std::vector <QString>getVarnames();
 
@@ -74,42 +78,37 @@ private slots:
     void on_axis_x1_edit_editingFinished();
     void on_axis_y0_edit_editingFinished();
     void on_axis_y1_edit_editingFinished();
-
     void on_colorbarCheckbox_clicked();
-
     void on_colorbarResetBtn_clicked();
-
     void on_actionSave_Config_triggered();
-
     void on_actionLoad_Config_triggered();
-
     void on_cbarmin_editingFinished();
-
     void on_cbarmax_editingFinished();
-
     void on_cboundReset_clicked();
-
     void on_actionOptions_triggered();
-
     void on_cbarCycleBtn_clicked();
-
     void on_pushButton_3_clicked();
-
     void on_spinBox_editingFinished();
-
     void on_logScaleCheckbox_clicked();
+
+    void onFileReady(QNetworkReply * reply);
+
+    void on_scaleCheckbox_clicked();
 
 private:
     std::vector <QPushButton *> topBtns;
     std::vector <QPushButton *> botBtns;
     Ui::ControlWindow *ui;
-    QString openFilename;
-    QDir home;
+    QColor bgColor;
+
+    bool fileIsOpen;
     int openFileIndex;
-    std::vector<QString> filesInHome;
     double axes[4];
     double cmap_vals[2];
-    QColor bgColor;
+
+    QDir home;
+    QString openFilename;
+    std::vector<QString> filesInHome;
     std::vector<std::string> split(std::string const &input);
 };
 

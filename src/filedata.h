@@ -37,6 +37,8 @@
 #ifndef FILEDATA_H
 #define FILEDATA_H
 
+#define FILEDATA_VERBOSE 0
+
 #include <hdf5.h>
 #include <cstdio>
 
@@ -64,8 +66,9 @@ public:
     int getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
     int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
 
-private:
     bool fileLoaded;
+
+private:
 
     // These all relate to JET specific variables
     int numPhi, numTheta;
@@ -78,6 +81,8 @@ private:
     double **minmax; // [ [min0, min1, min2, ...] , [max0, max1, max2, ...] ] <-> [type,q]
 
     void readPatch(hid_t *h5dst , void *data, hid_t type, int * start, int *loc_size, int *glo_size);
+
+    void freeAll();
 
 };
 

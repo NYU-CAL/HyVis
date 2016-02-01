@@ -30,6 +30,7 @@ public:
     void cycleCmap();
 
     void getCmapValue(double val, QVector3D *color);
+    void unitToTrue(double in, double *out);
 
 private:
     // vbo[0]  :  points
@@ -42,6 +43,7 @@ private:
     double gamma, center, slope;
     double *cmap_minmax;
     int colormap;
+    int leftQ;
     bool log;
 
 };

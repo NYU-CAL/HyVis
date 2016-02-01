@@ -37,8 +37,9 @@ int main(int argc, char *argv[])
 
     // Set up for signal passing
     v.ctrlwin = &w;
-
     w.updateVariableBtns();
+
+    //w.loadConfigFile("/Users/georgewong/Sites/CAL/default.config");
 
     return a.exec();
 }

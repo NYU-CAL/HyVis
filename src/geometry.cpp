@@ -9,6 +9,7 @@ Geometry::Geometry()
     this->slope = 1.0;
     this->cmap_minmax = NULL;
     this->colormap = 2;
+    this->leftQ = -1;
 }
 
 Geometry::~Geometry()
@@ -60,6 +61,7 @@ void Geometry::init()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Npts * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Geometry::drawGeometryLeft(QGLShaderProgram *program)
@@ -117,8 +119,15 @@ void Geometry::setLogscale(bool log)
 void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc)
 {
     int i,j, c,d;
-    this->Npts = Nc * 4;
-    this->Ngpts = Nc * 4;
+    this->Npts = (Nc-Nt) * 4;
+    this->Ngpts = (Nc-Nt) * 4;
+
+    int count = 0;
+    for (i=0; i<Nt; ++i) {
+        count += Nr[i];
+        //fprintf(stderr, "%d -> %d\n", i, Nr[i]);
+    }
+    //fprintf(stderr, "nc = %d vs %d & %d\n", Nc, count, count * 4);
 
     QVector2D *vertices = (QVector2D *)malloc(sizeof(QVector2D) * this->Npts );
     QVector3D   *colors = (QVector3D *)malloc(sizeof(QVector3D) * this->Npts );
@@ -127,36 +136,87 @@ void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int 
 
     c = 0;
     d = 0;
-    double t0, t1, r0, r1;
-    for (i=0; i<Nt; ++i) {
-        t0 = t_jph[i]; t1 = t_jph[i+1];
+    double t0,t1,dt, r0,r1,dr;
 
-        for (j=1; j<Nr[i]; ++j) {
+    if (Nt > 0) {
+        for (i=0; i<Nt; ++i) {
+            t0 = t_jph[i]; t1 = t_jph[i+1];
+            dt = (t1 - t0) * 0.01;
+            t0 -= dt; t1 += dt;
 
-            // DEBUG
-            r0 = r_iph[i][j-1]; r1 = r_iph[i][j];
-            //r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
+            for (j=1; j<Nr[i]; ++j) {
+
+                // DEBUG
+
+                r0 = r_iph[i][j-1]; r1 = r_iph[i][j];
+                dr = (r1 - r0) * 0.05;
+                r0 -= dr; r1 += dr;
+
+                //r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
+
+                // Bottom right
+                vertices[c] = QVector2D((float)(r0*cos(t0)), (float)(r0*sin(t0)));
+                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
+                indices[c]  = c;
+                c++;
+
+                // Bottom left
+                vertices[c] = QVector2D((float)(r0*cos(t1)), (float)(r0*sin(t1)));
+                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
+                indices[c]  = c;
+                c++;
+
+                // Top left
+                vertices[c] = QVector2D((float)(r1*cos(t1)), (float)(r1*sin(t1)));
+                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
+                indices[c]  = c;
+                c++;
+
+                // Top right
+                vertices[c] = QVector2D((float)(r1*cos(t0)), (float)(r1*sin(t0)));
+                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
+                indices[c]  = c;
+                c++;
+
+                // BR -> TR
+                gindices[d] = c-4; d++;
+                gindices[d] = c-1; d++;
+
+                // BR -> BL
+                gindices[d] = c-4; d++;
+                gindices[d] = c-3; d++;
+
+                // BL -> TL
+                //gindices[d] = c-3; d++;
+                //gindices[d] = c-2; d++;
+            }
+        }
+    } else {
+        for (j=1; j<Nr[0]; ++j) {
+            r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
+            dr = (r1 - r0) * 0.05;
+            r0 -= dr; r1 += dr;
 
             // Bottom right
-            vertices[c] = QVector2D((float)(r0*cos(t0)), (float)(r0*sin(t0)));
+            vertices[c] = QVector2D((float)(r0), (float)(0.0));
             colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
             indices[c]  = c;
             c++;
 
             // Bottom left
-            vertices[c] = QVector2D((float)(r0*cos(t1)), (float)(r0*sin(t1)));
+            vertices[c] = QVector2D((float)(r0), (float)(1.0));
             colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
             indices[c]  = c;
             c++;
 
             // Top left
-            vertices[c] = QVector2D((float)(r1*cos(t1)), (float)(r1*sin(t1)));
+            vertices[c] = QVector2D((float)(r1), (float)(1.0));
             colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
             indices[c]  = c;
             c++;
 
             // Top right
-            vertices[c] = QVector2D((float)(r1*cos(t0)), (float)(r1*sin(t0)));
+            vertices[c] = QVector2D((float)(r1), (float)(0.0));
             colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
             indices[c]  = c;
             c++;
@@ -168,11 +228,8 @@ void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int 
             // BR -> BL
             gindices[d] = c-4; d++;
             gindices[d] = c-3; d++;
-
-            // BL -> TL
-            //gindices[d] = c-3; d++;
-            //gindices[d] = c-2; d++;
         }
+
     }
 
     // Send data to the GPU
@@ -214,6 +271,7 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
     double x1 = this->cmap_minmax[1+2*q];
 
     if (this->log) {
+        if (x0 < 1e-4) x0 = 1e-4; // This is a bit of a magic number...
         x0 = log10(x0);
         x1 = log10(x1);
     }
@@ -247,7 +305,10 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
         }
     }
 
-    if (isLeft) glBindBuffer(GL_ARRAY_BUFFER, this->vbos[1]);
+    if (isLeft) {
+        glBindBuffer(GL_ARRAY_BUFFER, this->vbos[1]);
+        this->leftQ = q;
+    }
     else glBindBuffer(GL_ARRAY_BUFFER, this->vbos[2]);
 
     glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
@@ -273,8 +334,6 @@ void Geometry::updateCmapBound(int n, double val)
 
 void Geometry::getCmapValue(double val, QVector3D *color)
 {
-    // TODO: Allow linear / log data plotting!
-
     // ////////////////////////////// //
     // Rescale according to transform //
     // ////////////////////////////// //
@@ -304,7 +363,6 @@ void Geometry::getCmapValue(double val, QVector3D *color)
         val /= (1.0 - this->center);
         val = a1*val*val*val + b1*val*val + c1*val + d1;
     }
-
 
     // //////////////////// //
     // Perform colormapping //
@@ -341,6 +399,8 @@ void Geometry::getCmapValue(double val, QVector3D *color)
     {
         // TODO, do interpolation between cmap values
         int idx = (int) ( 255 * val );
+        if (idx < 0) idx = 0;
+        if (idx > 255) idx = 255;
         r = CMAP::OPTION_A[idx][0];
         g = CMAP::OPTION_A[idx][1];
         b = CMAP::OPTION_A[idx][2];
@@ -385,5 +445,26 @@ void Geometry::getCmapValue(double val, QVector3D *color)
     color->setX( (float)r );
     color->setY( (float)g );
     color->setZ( (float)b );
+}
 
+void Geometry::unitToTrue(double in, double *out)
+{
+    double min, max;
+
+    if (this->leftQ == -1) {
+        min = 0.0;
+        max = 1.0;
+    } else {
+        min = this->cmap_minmax[0+2*this->leftQ];
+        max = this->cmap_minmax[1+2*this->leftQ];
+    }
+
+    if (this->log) {
+        if (min < 1e-4) min = 1e-4;
+        min = log10(min);
+        max = log10(max);
+    }
+
+    *out = min + (max-min) * in;
+    if (this->log) *out = pow(10.0, *out);
 }
