@@ -997,34 +997,34 @@ void Viewer::set1DPlot(bool visible, bool isTheta)
 
 }
 
-void Viewer::replot1DPlot()
-{
-    if (this->plotIsTheta) {
-        double y = 1.0 * cos(this->plotLineData[2]);
-        this->update1DPlot(1.0, y, true);
-    } else {
-        double y = this->plotLineData[2] * this->plotLineData[2];
-        this->update1DPlot(0.0, y, true);
-    }
-}
-
 // void Viewer::replot1DPlot()
 // {
 //     if (this->plotIsTheta) {
-//         double x = this->Plot1DSet[0];
-//         double y = this->Plot1DSet[1];
-// //std::cout << x << y << std::endl;
-// 	this->update1DPlot(x, y, true);
-//         //double y = 1.0 * cos(this->plotLineData[2]);
-//         //this->update1DPlot(1.0, y, true);
+//         double y = 1.0 * cos(this->plotLineData[2]);
+//         this->update1DPlot(1.0, y, true);
 //     } else {
-//       double x = this->Plot1DSet[0];
-//       double y = this->Plot1DSet[1];
-//       this->update1DPlot(x, y, true);
-//         // double y = this->plotLineData[2] * this->plotLineData[2];
-//         // this->update1DPlot(0.0, y, true);
+//         double y = this->plotLineData[2] * this->plotLineData[2];
+//         this->update1DPlot(0.0, y, true);
 //     }
 // }
+
+void Viewer::replot1DPlot()
+{
+    if (this->plotIsTheta) {
+        double x = this->Plot1DSet[0];
+        double y = this->Plot1DSet[1];
+//std::cout << x << y << std::endl;
+	this->update1DPlot(x, y, true);
+        //double y = 1.0 * cos(this->plotLineData[2]);
+        //this->update1DPlot(1.0, y, true);
+    } else {
+      double x = this->Plot1DSet[0];
+      double y = this->Plot1DSet[1];
+      this->update1DPlot(x, y, true);
+        // double y = this->plotLineData[2] * this->plotLineData[2];
+        // this->update1DPlot(0.0, y, true);
+    }
+}
 
 void Viewer::savePPM(const char *fname)
 {
