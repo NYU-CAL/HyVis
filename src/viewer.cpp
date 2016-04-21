@@ -57,7 +57,8 @@ Viewer::Viewer(QWidget *parent) :
     this->plotLineData[0] = 0.0;
     this->plotLineData[1] = 1.0;
     this->plotLineData[2] = 1.0;
-
+    this->Plot1DSet[0] = 1.0;
+    this->Plot1DSet[1] = 1.0;
 }
 
 Viewer::~Viewer()
@@ -395,7 +396,9 @@ void Viewer::mousePressEvent(QMouseEvent *event)
                            &(this->drawBoxCoordinates[0]),
                            &(this->drawBoxCoordinates[1]));
     } else if (this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
-        this->update1DPlot(event->pos().x(), event->pos().y(), true);
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();
+      this->update1DPlot(event->pos().x(), event->pos().y(), true);
     }
 
     double tx, ty;
@@ -435,7 +438,9 @@ void Viewer::mouseReleaseEvent(QMouseEvent *event)
     }
 
     if (this->input[KEY_CTRL]) {
-        this->update1DPlot(event->pos().x(), event->pos().y(), true);
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();
+      this->update1DPlot(event->pos().x(), event->pos().y(), true);
     }
 
     switch (event->button()) {
@@ -485,6 +490,8 @@ void Viewer::mouseMoveEvent(QMouseEvent *event)
         this->drawBoxCoordinates[3] = tty;
         this->repaint();
     } else if (this->input[KEY_CTRL] && !this->input[KEY_SHIFT] && (event->buttons() & Qt::LeftButton)) {
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();                                    
         this->update1DPlot(event->pos().x(), event->pos().y(), false);
 
     } else {
@@ -1001,11 +1008,29 @@ void Viewer::replot1DPlot()
     }
 }
 
+// void Viewer::replot1DPlot()
+// {
+//     if (this->plotIsTheta) {
+//         double x = this->Plot1DSet[0];
+//         double y = this->Plot1DSet[1];
+// //std::cout << x << y << std::endl;
+// 	this->update1DPlot(x, y, true);
+//         //double y = 1.0 * cos(this->plotLineData[2]);
+//         //this->update1DPlot(1.0, y, true);
+//     } else {
+//       double x = this->Plot1DSet[0];
+//       double y = this->Plot1DSet[1];
+//       this->update1DPlot(x, y, true);
+//         // double y = this->plotLineData[2] * this->plotLineData[2];
+//         // this->update1DPlot(0.0, y, true);
+//     }
+// }
+
 void Viewer::savePPM(const char *fname)
 {
     int i,j;
-    int dimx = this->width();
-    int dimy = this->height();
+    int dimx = 2*this->width();
+    int dimy = 2*this->height();
     float *pixels = new float[3*dimx*dimy];
 
     glReadBuffer(GL_BACK);

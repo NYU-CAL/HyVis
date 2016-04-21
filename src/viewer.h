@@ -103,6 +103,7 @@ private:
     double pointScale[2];
     double clickPoint[2];
     double clickCenter[2];
+    double Plot1DSet[2];
     int bgColor[3];
 
     bool drawBox;

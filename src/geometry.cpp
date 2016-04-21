@@ -144,11 +144,11 @@ void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int 
             dt = (t1 - t0) * 0.01;
             t0 -= dt; t1 += dt;
 
-            for (j=1; j<Nr[i]; ++j) {
+            for (j=0; j<Nr[i]; ++j) {
 
                 // DEBUG
 
-                r0 = r_iph[i][j-1]; r1 = r_iph[i][j];
+	        r0 = j==0 ? 0.000001:r_iph[i][j-1]; r1 = r_iph[i][j];
                 dr = (r1 - r0) * 0.05;
                 r0 -= dr; r1 += dr;
 
@@ -192,8 +192,8 @@ void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int 
             }
         }
     } else {
-        for (j=1; j<Nr[0]; ++j) {
-            r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
+        for (j=0; j<Nr[0]; ++j) {
+	    r0 = j==0? 0.0000001:r_iph[0][j-1]; r1 = r_iph[0][j];
             dr = (r1 - r0) * 0.05;
             r0 -= dr; r1 += dr;
 
