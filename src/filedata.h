@@ -41,11 +41,26 @@
 
 #include <hdf5.h>
 #include <cstdio>
-
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
 #include <vector>
+//#include "unit.h"
+
+class Unit{
+ public:
+  Unit();
+  ~Unit();
+  int nums;
+  double M;
+  double L;
+  double T;
+  double Rho;
+  double Pre;
+  double V;
+  double *vars;
+};
+
 
 class FileData
 {
@@ -54,6 +69,7 @@ public:
     ~FileData();
 
     bool loadFromFile(const char *filename);
+    bool ToCGS();    
     int get_nc();
     int get_nt();
     int get_nq();
@@ -67,9 +83,9 @@ public:
     int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
 
     bool fileLoaded;
-
+    
 private:
-
+    
     // These all relate to JET specific variables
     int numPhi, numTheta;
     int numCells, numQ;
@@ -83,7 +99,7 @@ private:
     void readPatch(hid_t *h5dst , void *data, hid_t type, int * start, int *loc_size, int *glo_size);
 
     void freeAll();
-
+    Unit unit;
 };
 
 #endif // FILEDATA_H

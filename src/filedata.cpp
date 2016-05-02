@@ -1,5 +1,31 @@
 #include "filedata.h"
 
+Unit::Unit()
+{
+  M = 2e33;
+  L = 6.8e10;
+  T = 96.1665;
+  Rho = 6.36067575819255;
+  Pre = 3.1803378790962755e18;
+  V = 7071.0678118654751;
+  nums = 10; // note this number should larger than numQ;
+  vars = (double *) malloc(sizeof(double)*nums);
+  for(int i=0; i<nums; i++){
+    vars[i] = 1.0;
+  }
+  vars[0] = Rho;
+  vars[1] = Pre;
+  vars[2] = V;
+  vars[3] = V;
+  vars[4] = V;
+}
+
+Unit::~Unit()
+{
+  free(vars);
+}
+    
+
 FileData::FileData()
 {
     this->numCells = 0;
@@ -24,6 +50,27 @@ FileData::~FileData()
     this->freeAll();
     free(this->minmax);
 }
+
+bool FileData::ToCGS(){
+  
+  this->time = this->time*this->unit.T;
+  if( this->numQ > this->unit.nums ) printf("Warning Unit Convert Variable number less than the actual variable number\n");
+  //  printf("%.4e   %.4e   %.4e   %.4e\n", this->unit.L, this->unit.Rho, this->unit.Pre, this->unit.V);
+  for (int i=0; i<this->numTheta; ++i) {
+    for (int j=0; j<Nr[i]; ++j) {
+      //      this->r_iph[i][j] = this->r_iph[i][j]*this->unit.L;
+      for (int k=0; k<this->numQ; ++k) {
+	this->cells[k][i][j] = this->cells[k][i][j]*this->unit.vars[k];
+      }
+    }
+  }
+  for(int k=0; k<this->numQ; ++k){
+    this->minmax[0][k] = this->minmax[0][k]*this->unit.vars[k];
+    this->minmax[1][k] = this->minmax[1][k]*this->unit.vars[k];
+  }
+  return true;
+}
+
 
 bool FileData::loadFromFile(const char *filename)
 {

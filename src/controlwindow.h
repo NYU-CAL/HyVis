@@ -37,6 +37,7 @@ public:
     void toggleGrid(bool shown);
     void toggleColorbar(bool shown);
     bool toggleLogscale();
+    //    bool toggleUnit();
     void setColorbarBounds(double **minmax, int var);
     std::vector <QString>getVarnames();
 
@@ -69,6 +70,7 @@ private slots:
     void on_view1dThetaBtn_clicked();
     void on_view1dRBtn_clicked();
     void on_view1dBtn_clicked();
+    void on_view1dScaleBtn_clicked();
     void on_mirror4xCheckbox_clicked();
     void on_horizontalSlider_sliderMoved(int position);
     void on_horizontalSlider_2_sliderMoved(int position);
@@ -90,9 +92,8 @@ private slots:
     void on_pushButton_3_clicked();
     void on_spinBox_editingFinished();
     void on_logScaleCheckbox_clicked();
-
+    void on_UnitCheckbox_clicked();
     void onFileReady(QNetworkReply * reply);
-
     void on_scaleCheckbox_clicked();
 
 private:

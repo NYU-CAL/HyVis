@@ -68,7 +68,6 @@ Viewer::~Viewer()
 bool Viewer::loadFile(const char *filename)
 {
     if ( !this->filedata.loadFromFile(filename) ) return false;
-
     if (this->glDoneInit) {
         this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
         this->g.loadGeometry(this->filedata.get_tjph(),
@@ -95,6 +94,60 @@ bool Viewer::loadFile(const char *filename)
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
 
+    // Updates for the query window
+    if (this->qw != NULL) this->qw->updateNumValues(this->filedata.get_nq(), this->ctrlwin->getVarnames());
+    if (this->valuesAtPointer != NULL) free(this->valuesAtPointer);
+    this->valuesAtPointer = (double *)malloc(this->filedata.get_nq() * sizeof(double));
+
+    if (this->drawPlotLine) this->replot1DPlot();
+    this->repaint();
+
+
+    // Updates for the control window //
+
+    // Update axis position
+    this->ctrlwin->updateAxesInfo(
+        this->pointCenter[0] - this->pointScale[0],
+        this->pointCenter[0] + this->pointScale[0],
+        this->pointCenter[1] - this->pointScale[1],
+        this->pointCenter[1] + this->pointScale[1]);
+
+    // Update the colorbar scale
+    this->ctrlwin->setColorbarBounds(this->filedata.get_minmax(), this->leftDisplayVar);
+
+    return true;
+}
+
+bool Viewer::updateFile()
+{
+  
+  if ( !this->filedata.ToCGS() ) return false;
+  if (this->glDoneInit) {
+    this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
+  //   this->g.loadGeometry(this->filedata.get_tjph(),
+  // 			 this->filedata.get_riph(),
+  // 			 this->filedata.get_nt(),
+  // 			 this->filedata.get_nr(),
+  // 			 this->filedata.get_nc());
+  // }
+  }
+    // Updates for the l & r values, if uninitialized
+    if (this->leftDisplayVar == -1) this->leftDisplayVar = 0;
+    if (this->rightDisplayVar == -1) this->rightDisplayVar = 0;
+
+    this->g.setValue(true,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->leftDisplayVar);
+    this->g.setValue(false,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->rightDisplayVar);
+    //this->repaint();
     // Updates for the query window
     if (this->qw != NULL) this->qw->updateNumValues(this->filedata.get_nq(), this->ctrlwin->getVarnames());
     if (this->valuesAtPointer != NULL) free(this->valuesAtPointer);
@@ -992,6 +1045,15 @@ void Viewer::set1DPlot(bool visible, bool isTheta)
         double y = this->plotLineData[2] * this->plotLineData[2];
         this->update1DPlot(0.0, y, true);
     }
+
+    this->repaint();
+
+}
+
+void Viewer::set1DScale(bool visible, bool isScale)
+{
+    // this->drawPlotLine = visible;
+    // if (visible) this->plotIsTheta = isTheta;
 
     this->repaint();
 
