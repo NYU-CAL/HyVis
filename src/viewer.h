@@ -106,6 +106,7 @@ private:
     double clickPoint[2];
     double clickCenter[2];
     double Plot1DSet[2];
+    double MousePos[2];
     int bgColor[3];
 
     bool drawBox;

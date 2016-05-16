@@ -59,6 +59,9 @@ Viewer::Viewer(QWidget *parent) :
     this->plotLineData[2] = 1.0;
     this->Plot1DSet[0] = 1.0;
     this->Plot1DSet[1] = 1.0;
+    // add mouse position recorder; so that next file could update query window
+    this->MousePos[0] = 0.5;
+    this->MousePos[1] = 0.5;
 }
 
 Viewer::~Viewer()
@@ -99,6 +102,32 @@ bool Viewer::loadFile(const char *filename)
     if (this->valuesAtPointer != NULL) free(this->valuesAtPointer);
     this->valuesAtPointer = (double *)malloc(this->filedata.get_nq() * sizeof(double));
 
+    /***************/
+
+    if(this->qw != NULL) {
+      double ttx, tty;
+      ttx = this->MousePos[0];
+      tty = this->MousePos[1];
+
+    // Update query window
+    if (this->isMirrored && tty < 0) {
+        tty = -tty;
+        this->qw->setPosition(ttx, tty, 0.0);
+        if (this->valuesAtPointer != NULL) {
+            this->filedata.getValuesAt(ttx, tty, this->valuesAtPointer);
+            this->qw->setValues(this->valuesAtPointer);
+        }
+        tty = -tty;
+    } else {
+        this->qw->setPosition(ttx, tty, 0.0);
+        if (this->valuesAtPointer != NULL) {
+            this->filedata.getValuesAt(ttx, tty, this->valuesAtPointer);
+            this->qw->setValues(this->valuesAtPointer);
+        }
+    }
+    }
+
+    /************/
     if (this->drawPlotLine) this->replot1DPlot();
     this->repaint();
 
@@ -516,7 +545,8 @@ void Viewer::mouseMoveEvent(QMouseEvent *event)
 
     double ttx, tty;
     this->screenToData(event->pos().x(), event->pos().y(), &ttx, &tty);
-
+    this->MousePos[0] = ttx;
+    this->MousePos[1] = tty;
     // Update query window
     if (this->isMirrored && tty < 0) {
         tty = -tty;
