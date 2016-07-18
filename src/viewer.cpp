@@ -1049,6 +1049,6 @@ void Viewer::screenToData(int sx, int sy, double *tx, double *ty)
     ssx = ssx * 2 - 1;
     ssy = - (ssy * 2 - 1);
     QVector3D vec = this->invmatrix * QVector3D(ssx, ssy, 0.0);
-    *tx = vec[0];
-    *ty = vec[1];
+    *tx = vec.x();
+    *ty = vec.y();
 }

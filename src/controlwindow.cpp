@@ -57,7 +57,10 @@ void ControlWindow::loadFileFull(QString reqFilename)
 
     int i = 0;
     QStringList files = home.entryList();
-    for (QString s : files) {
+    int j;
+    //for (QString s : files) {
+    for(j=0; j<files.length(); j++) {
+        QString s = files.at(j);
         QString stripped = s.right(s.length() - s.lastIndexOf(".") );
         if (QString::compare(stripped, QString(".h5")) == 0) {
             this->filesInHome.push_back(s);
@@ -246,7 +249,10 @@ void ControlWindow::on_pushButton_clicked()
 
 void ControlWindow::topVarBtn_clicked(int i)
 {
-    for (QPushButton *b : this->topBtns) {
+    int j;
+    //for (QPushButton *b : this->topBtns) {
+    for(j=0; j < this->topBtns.size(); j++) {
+        QPushButton *b = this->topBtns.at(j);
         b->setStyleSheet("");
     }
     this->topBtns.at(i)->setStyleSheet("color: #ff2200");
@@ -256,7 +262,10 @@ void ControlWindow::topVarBtn_clicked(int i)
 
 void ControlWindow::botVarBtn_clicked(int i)
 {
-    for (QPushButton *b : this->botBtns) {
+    //for (QPushButton *b : this->botBtns) {
+    int j;
+    for(j=0; j < this->botBtns.size(); j++) {
+        QPushButton *b = this->botBtns.at(j);
         b->setStyleSheet("");
     }
     this->botBtns.at(i)->setStyleSheet("color: #ff2200");
@@ -266,8 +275,17 @@ void ControlWindow::botVarBtn_clicked(int i)
 void ControlWindow::updateVariableBtns()
 {
     // First clear the bar
-    for (QPushButton *b : this->topBtns) this->ui->variableLayoutTop->removeWidget(b);
-    for (QPushButton *b : this->botBtns) this->ui->variableLayoutBottom->removeWidget(b);
+    //for (QPushButton *b : this->topBtns) this->ui->variableLayoutTop->removeWidget(b);
+    int j;
+    for (j=0; j<this->topBtns.size(); j++) {
+        QPushButton *b = this->topBtns.at(j);
+        this->ui->variableLayoutTop->removeWidget(b);
+    }
+    //for (QPushButton *b : this->botBtns) this->ui->variableLayoutBottom->removeWidget(b);
+    for (j=0; j<this->botBtns.size(); j++) {
+        QPushButton *b = this->botBtns.at(j);
+        this->ui->variableLayoutBottom->removeWidget(b);
+    }
     this->topBtns.clear();
     this->botBtns.clear();
 
@@ -364,12 +382,24 @@ void ControlWindow::on_mirrorCheckbox_clicked()
 {
     if (this->ui->mirrorCheckbox->isChecked()) {
         this->viewer->setIsMirrored(true);
-        for (QPushButton *b : this->botBtns) b->setEnabled(true);
+        int j;
+        //for (QPushButton *b : this->botBtns) b->setEnabled(true);
+        for (j=0; j<this->botBtns.size(); j++)
+        {
+            QPushButton *b = this->botBtns.at(j);
+            b->setEnabled(true);
+        }
     } else {
         this->viewer->setIsMirrored(false);
         this->viewer->setIsDoubleMirrored(false);
         this->ui->mirror4xCheckbox->setChecked(false);
-        for (QPushButton *b : this->botBtns) b->setEnabled(false);
+        int j;
+        //for (QPushButton *b : this->botBtns) b->setEnabled(false);
+        for (j=0; j<this->botBtns.size(); j++)
+        {
+            QPushButton *b = this->botBtns.at(j);
+            b->setEnabled(false);
+        }
     }
 }
 
@@ -448,7 +478,13 @@ void ControlWindow::on_mirror4xCheckbox_clicked()
     if (this->ui->mirror4xCheckbox->isChecked()) {
         this->viewer->setIsDoubleMirrored(true);
         this->ui->mirrorCheckbox->setChecked(true);
-        for (QPushButton *b : this->botBtns) b->setEnabled(true);
+        int j;
+        //for (QPushButton *b : this->botBtns) b->setEnabled(true);
+        for (j=0; j<this->botBtns.size(); j++)
+        {
+            QPushButton *b = this->botBtns.at(j);
+            b->setEnabled(true);
+        }
     } else {
         this->viewer->setIsDoubleMirrored(false);
     }
