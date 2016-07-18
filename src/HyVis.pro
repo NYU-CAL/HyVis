@@ -37,7 +37,8 @@ HEADERS  += controlwindow.h \
 
 FORMS    += controlwindow.ui \
     querywindow.ui \
-    plot2dviewer.ui
+    plot2dviewer.ui \
+    config.ui
 
 RESOURCES += \
     Shaders.qrc
