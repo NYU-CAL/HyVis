@@ -70,11 +70,15 @@ bool Viewer::loadFile(const char *filename)
 
     if (this->glDoneInit) {
         this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
-        this->g.loadGeometry(this->filedata.get_tjph(),
-                             this->filedata.get_riph(),
-                             this->filedata.get_nt(),
-                             this->filedata.get_nr(),
-                             this->filedata.get_nc());
+
+        double *gp;
+        int ngp, *ci, nci, *gpi, ngpi;
+        this->filedata.genGridData(&gp, &ngp, &ci, &nci, &gpi, &ngpi);
+
+        this->g.loadGeometry(gp, ngp, this->filedata.get_nc(), ci, nci, gpi, ngpi);
+        free(gp);
+        free(ci);
+        free(gpi);
     }
 
     // Updates for the l & r values, if uninitialized
@@ -82,14 +86,10 @@ bool Viewer::loadFile(const char *filename)
     if (this->rightDisplayVar == -1) this->rightDisplayVar = 0;
 
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -788,8 +788,6 @@ void Viewer::setLeftValue(int n)
 {
     this->leftDisplayVar = n;
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      n);
@@ -800,8 +798,6 @@ void Viewer::setRightValue(int n)
 {
     this->rightDisplayVar = n;
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      n);
@@ -812,14 +808,10 @@ void Viewer::setGammaValue(double gamma)
 {
     this->g.setCmapStats(gamma, -1.0, -1.0);
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -831,14 +823,10 @@ void Viewer::setCenterValue(double center)
 {
     this->g.setCmapStats(-1.0, center, -1.0);
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -849,14 +837,10 @@ void Viewer::setSlopeValue(double slope)
 {
     this->g.setCmapStats(-1.0, -1.0, slope);
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -868,14 +852,10 @@ void Viewer::setCmapMinmax(double min, double max)
     this->g.updateCmapBound(0 + this->leftDisplayVar*2, min);
     this->g.updateCmapBound(1 + this->leftDisplayVar*2, max);
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -891,14 +871,10 @@ void Viewer::cycleCmap()
 {
     this->g.cycleCmap();
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
@@ -916,24 +892,19 @@ void Viewer::rescale(int i)
 
     // Zoom to a size capable of displaying full data
     if (i == 1) {
-
-        double *tjph = this->filedata.get_tjph();
-        double **riph = this->filedata.get_riph();
-
-        double r0 = riph[0][0];
-        double r1 = riph[0][this->filedata.get_nr()[0]-1];
-        double t0 = tjph[0];
-        double t1 = tjph[this->filedata.get_nt()-1];
-
+        double *bounds = this->filedata.get_bounds();
+        double xmin = bounds[0];
+        double xmax = bounds[1];
+        double ymin = bounds[2];
+        double ymax = bounds[3];
+        
         if (this->rotateAngle > 45) {
-            t0 += M_PI / 2;
-            t1 += M_PI / 2;
-        }
 
-        double xmin = fmin(r0*cos(t1), r1*cos(t1));
-        double xmax = r1*cos(t0);
-        double ymin = fmin(r0*sin(t0), r0*sin(t1));
-        double ymax = fmax(r1*sin(t0), r1*sin(t1));
+            xmin = -bounds[3];
+            xmax = bounds[2];
+            ymin = bounds[0];
+            ymax = bounds[1];
+        }
 
         double dx = 0.02 * (xmax - xmin);
         double dy = 0.02 * (ymax - ymin);
@@ -953,14 +924,10 @@ void Viewer::setLogscale(bool log)
     if ( !this->filedata.fileLoaded ) return;
     this->g.setLogscale(log);
     this->g.setValue(true,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->leftDisplayVar);
     this->g.setValue(false,
-                     this->filedata.get_nt(),
-                     this->filedata.get_nr(),
                      this->filedata.get_nc(),
                      this->filedata.get_cells(),
                      this->rightDisplayVar);

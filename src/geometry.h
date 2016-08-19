@@ -22,8 +22,10 @@ public:
     void drawGrid(QGLShaderProgram *program);
 
     void setLogscale(bool log);
-    void loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc);
-    void setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, int q);
+    //void loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc);
+    void loadGeometry(double *gp, int ngp, int nc, int *ci, int nci, int *gpi, int ngpi);
+    //void setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, int q);
+    void setValue(bool isLeft, int Nc, double **cells, int q);
     void setCmapMinmax(double **minmax, int numq);
     void updateCmapBound(int n, double val);
     void setCmapStats(double gamma, double center, double slope);
@@ -39,7 +41,7 @@ private:
     // vbo[3]  :  pt. order (faces)
     // vbo[4]  :  pt. order (grid)
     GLuint vbos[5];
-    int Npts, Ngpts;
+    int Ndpts, Ngpts, Nglns, Ndpts_tot;
     double gamma, center, slope;
     double *cmap_minmax;
     int colormap;

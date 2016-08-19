@@ -17,6 +17,10 @@ FileData::FileData()
     this->Nr = NULL;
     this->minmax[0] = NULL;
     this->minmax[1] = NULL;
+    this->bounds[0] = 0.0;
+    this->bounds[1] = 1.0;
+    this->bounds[2] = 0.0;
+    this->bounds[3] = 1.0;
 }
 
 FileData::~FileData()
@@ -109,17 +113,18 @@ bool FileData::loadFromFile(const char *filename)
     this->minmax[1] = (double *)malloc(sizeof(double) * this->numQ);
 
     this->r_iph = (double **)malloc(sizeof(double *) * this->numTheta);
-    this->cells = (double ***)malloc(sizeof(double **) * this->numQ);
+    this->cells = (double **)malloc(sizeof(double *) * this->numQ);
     for (i=0; i<this->numQ; ++i) {
-        cells[i] = (double **)malloc(sizeof(double *) * this->numTheta);
+        cells[i] = (double *)malloc(sizeof(double) * this->numCells);
     }
 
     loc_size[1] = this->numQ+1;
     glo_size[0] = this->numCells; glo_size[1] = this->numQ + 1;
     start[0] = - this->Nr[0];
+    
+    int count = 0;
     for (i=0; i<this->numTheta; ++i) {
-        this->r_iph[i] = (double *)malloc(sizeof(double) * Nr[i]);
-        for (j=0; j<this->numQ; ++j) cells[j][i] = (double *)malloc(sizeof(double) * Nr[i]);
+        this->r_iph[i] = (double *)malloc(sizeof(double) * (Nr[i]+1));
         loc_size[0] = this->Nr[i];
         start[0] = tindex[i];
         double buffer[this->Nr[i] * (this->numQ+1)];
@@ -134,15 +139,30 @@ bool FileData::loadFromFile(const char *filename)
         }
 
         // Load from the buffer into the proper class variables
+        this->r_iph[i][0] = 0.0;
         for (j=0; j<Nr[i]; ++j) {
-            this->r_iph[i][j] = buffer[j * (this->numQ + 1) + this->numQ];
+            this->r_iph[i][j+1] = buffer[j * (this->numQ + 1) + this->numQ];
             for (int k=0; k<this->numQ; ++k) {
-                this->cells[k][i][j] = buffer[j * (this->numQ + 1) + k];
-                if (this->minmax[0][k] > this->cells[k][i][j]) this->minmax[0][k] = this->cells[k][i][j];
-                if (this->minmax[1][k] < this->cells[k][i][j]) this->minmax[1][k] = this->cells[k][i][j];
+                this->cells[k][count+j] = buffer[j * (this->numQ + 1) + k];
+                if (this->minmax[0][k] > this->cells[k][count+j]) this->minmax[0][k] = this->cells[k][count+j];
+                if (this->minmax[1][k] < this->cells[k][count+j]) this->minmax[1][k] = this->cells[k][count+j];
             }
         }
+        count += Nr[i];
     }
+
+    double th0 = this->t_jph[0];
+    double th1 = this->t_jph[this->numTheta];
+    double r0 = this->r_iph[0][0];
+    double r1 = this->r_iph[0][this->Nr[0]];
+    double xmin = fmin(r0*cos(th1), r1*cos(th1));
+    double xmax = r1*cos(th0);
+    double ymin = fmin(r0*sin(th0), r0*sin(th1));
+    double ymax = fmax(r1*sin(th0), r1*sin(th1));
+    this->bounds[0] = xmin;
+    this->bounds[1] = xmax;
+    this->bounds[2] = ymin;
+    this->bounds[3] = ymax;
 
     H5Dclose(h5_cells);
 
@@ -162,18 +182,6 @@ bool FileData::loadFromFile(const char *filename)
     return true;
 }
 
-double *FileData::get_tjph()
-{
-    if (this->fileLoaded) return this->t_jph;
-    return NULL;
-}
-
-double **FileData::get_riph()
-{
-    if (this->fileLoaded) return this->r_iph;
-    return NULL;
-}
-
 double **FileData::get_minmax()
 {
     if (this->fileLoaded) return this->minmax;
@@ -186,27 +194,21 @@ int FileData::get_nc()
     return 0;
 }
 
-int FileData::get_nt()
-{
-    if (this->fileLoaded) return this->numTheta;
-    return 0;
-}
-
 int FileData::get_nq()
 {
     if (this->fileLoaded) return this->numQ;
     return 0;
 }
 
-int *FileData::get_nr()
+double **FileData::get_cells()
 {
-    if (this->fileLoaded) return this->Nr;
+    if (this->fileLoaded) return this->cells;
     return NULL;
 }
 
-double ***FileData::get_cells()
+double *FileData::get_bounds()
 {
-    if (this->fileLoaded) return this->cells;
+    if (this->fileLoaded) return this->bounds;
     return NULL;
 }
 
@@ -221,19 +223,21 @@ void FileData::getValuesAt(double x, double y, double *values)
     double r = sqrt(x*x + y*y);
 
     // Find theta location
+    int count = 0;
     if (theta < this->t_jph[0]) return;
     for (i=0; i<this->numTheta; ++i) {
         if (theta < this->t_jph[i+1]) {
             valid = true;
             break;
         }
+        count += this->Nr[i];
     }
     if (!valid) return;
 
     // Find r location
     valid = false;
     if (r < this->r_iph[i][0]) return;
-    for (j=0; j<this->Nr[i]-1; ++j) {
+    for (j=0; j<this->Nr[i]; ++j) {
         if (r < this->r_iph[i][j+1]) {
             valid = true;
             break;
@@ -243,13 +247,13 @@ void FileData::getValuesAt(double x, double y, double *values)
 
     // Updates the values
     for (k=0; k<this->numQ; ++k) {
-        values[k] = this->cells[k][i][j+1];
+        values[k] = this->cells[k][count+j];
     }
 }
 
 int FileData::getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)
 {
-    int i,j;
+    int i,j,count=0;
     bool valid = false;
     double theta = atan(y/x);
 
@@ -259,13 +263,14 @@ int FileData::getValuesAtTheta(double x, double y, int n, std::vector<double> *x
             valid = true;
             break;
         }
+        count += this->Nr[i];
     }
     if (!valid) return 0;
 
     // Populate x & y data
     for (j=0; j<this->Nr[i]; ++j) {
-        xdata->push_back(this->r_iph[i][j]);
-        ydata->push_back(this->cells[n][i][j]);
+        xdata->push_back(0.5*(this->r_iph[i][j]+this->r_iph[i][j+1]));
+        ydata->push_back(this->cells[n][count+j]);
     }
 
     return Nr[i];
@@ -273,14 +278,14 @@ int FileData::getValuesAtTheta(double x, double y, int n, std::vector<double> *x
 
 int FileData::getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)
 {
-    int i,j, count=0;
+    int i,j, size=0, count=0;
     bool valid;
     double r = sqrt(x*x + y*y);
 
     for (i=0; i<this->numTheta; ++i) {
         valid = false;
         if (r < this->r_iph[i][0]) continue;
-        for (j=0; j<this->Nr[i]-1; ++j) {
+        for (j=0; j<this->Nr[i]; ++j) {
             if (r < this->r_iph[i][j+1]) {
                 valid = true;
                 break;
@@ -288,12 +293,14 @@ int FileData::getValuesAtR(double x, double y, int n, std::vector<double> *xdata
         }
         if (!valid) continue;
 
-        count ++;
-        xdata->push_back(this->t_jph[i]);
-        ydata->push_back(this->cells[n][i][j]);
+        size ++;
+        xdata->push_back(0.5*(this->t_jph[i]+this->t_jph[i+1]));
+        ydata->push_back(this->cells[n][count+j]);
+
+        count += this->Nr[i];
     }
 
-    return count;
+    return size;
 }
 
 void FileData::readPatch(hid_t *h5dst, void *data, hid_t type, int *start, int *loc_size, int *glo_size)
@@ -328,6 +335,115 @@ void FileData::readPatch(hid_t *h5dst, void *data, hid_t type, int *start, int *
     H5Sclose(fspace);
 }
 
+void FileData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)
+{
+    int i,j,c,l,v;
+
+    *nci = 4*this->numCells;
+    *ngp = 4*this->numCells;
+    *ngpi = 4*this->numCells;
+
+    *gp = (double *) malloc(2 * (*ngp) * sizeof(double));
+    *ci = (int *) malloc((*nci) * sizeof(int));
+    *gpi = (int *) malloc((*ngpi) * sizeof(int));
+
+    double t0,t1,dt, r0,r1,dr;
+
+    l=0;
+    v=0;
+
+    if (this->numTheta > 0) {
+        for (i=0; i<this->numTheta; ++i) {
+            t0 = this->t_jph[i]; 
+            t1 = this->t_jph[i+1];
+            dt = (t1 - t0) * 0.01;
+            t0 -= dt; t1 += dt;
+
+            for (j=0; j<this->Nr[i]; ++j) {
+
+                // DEBUG
+
+                r0 = this->r_iph[i][j];
+                r1 = this->r_iph[i][j+1];
+                dr = (r1 - r0) * 0.05;
+                r0 -= dr; r1 += dr;
+
+                //r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
+                
+
+                // Bottom right
+                (*gp)[2*v] = r0*cos(t0);
+                (*gp)[2*v+1] = r0*sin(t0);
+                (*ci)[v] = v;
+                v++;
+
+                // Bottom left
+                (*gp)[2*v] = r0*cos(t1);
+                (*gp)[2*v+1] = r0*sin(t1);
+                (*ci)[v] = v;
+                v++;
+
+                // Top left
+                (*gp)[2*v] = r1*cos(t1);
+                (*gp)[2*v+1] = r1*sin(t1);
+                (*ci)[v] = v;
+                v++;
+
+                // Top right
+                (*gp)[2*v] = r1*cos(t0);
+                (*gp)[2*v+1] = r1*sin(t0);
+                (*ci)[v] = v;
+                v++;
+
+                // BR -> TR
+                (*gpi)[l] = v-4; l++;
+                (*gpi)[l] = v-1; l++;
+
+                // BR -> BL
+                (*gpi)[l] = v-4; l++;
+                (*gpi)[l] = v-3; l++;
+            }
+        }
+    } else {
+        for (j=0; j<this->Nr[0]; ++j) {
+            r0 = r_iph[0][j]; r1 = r_iph[0][j+1];
+            dr = (r1 - r0) * 0.05;
+            r0 -= dr; r1 += dr;
+
+            (*ci)[c] = c; c++;
+
+            // Bottom right
+            (*gp)[2*v] = r0;
+            (*gp)[2*v+1] = 1.0;
+            v++;
+
+            // Bottom left
+            (*gp)[2*v] = r0;
+            (*gp)[2*v+1] = 1.0;
+            v++;
+
+            // Top left
+            (*gp)[2*v] = r1;
+            (*gp)[2*v+1] = 1.0;
+            v++;
+
+            // Top right
+            (*gp)[2*v] = r1;
+            (*gp)[2*v+1] = 0.0;
+            v++;
+
+            // BR -> TR
+            (*gpi)[l] = v-4; l++;
+            (*gpi)[l] = v-1; l++;
+
+            // BR -> BL
+            (*gpi)[l] = v-4; l++;
+            (*gpi)[l] = v-3; l++;
+        }
+    }
+
+}
+
 // In a surprising twist, freeAll does not actually free
 // this->minmax.
 void FileData::freeAll()
@@ -345,11 +461,11 @@ void FileData::freeAll()
     int i,j;
     for (i=0; i<this->numTheta; ++i) {
         if (this->r_iph != NULL && this->r_iph[i] != NULL) free(this->r_iph[i]);
-        if (this->cells != NULL) {
-            for (j=0; j<this->numQ; ++j) {
-                if (this->cells[j][i] != NULL) free(this->cells[j][i]);
-            }
-        }
+        //if (this->cells != NULL) {
+        //    for (j=0; j<this->numQ; ++j) {
+        //        if (this->cells[j][i] != NULL) free(this->cells[j][i]);
+        //    }
+        //}
     }
 
     if (this->r_iph != NULL) free(this->r_iph);
@@ -359,3 +475,4 @@ void FileData::freeAll()
     }
 
 }
+

@@ -2,8 +2,11 @@
 
 Geometry::Geometry()
 {
-    this->Npts = 0;
+    //this->Npts = 0;
     this->Ngpts = 0;
+    this->Nglns = 0;
+    this->Ndpts = 0;
+    this->Ndpts_tot = 0;
     this->gamma = 0.8;
     this->center = 0.5;
     this->slope = 1.0;
@@ -50,16 +53,19 @@ void Geometry::init()
 
     GLuint indices[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-    this->Npts = 8;
+    this->Ngpts = 8;
+    this->Nglns = 8;
+    this->Ndpts = 8;
+    this->Ndpts_tot = 8;
 
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[0]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector2D), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ngpts * sizeof(QVector2D), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[1]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[2]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Npts * sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Ndpts * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -79,7 +85,7 @@ void Geometry::drawGeometryLeft(QGLShaderProgram *program)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
 
-    glDrawElements(GL_QUADS, this->Npts, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_QUADS, this->Ndpts, GL_UNSIGNED_INT, 0);
 }
 
 void Geometry::drawGeometryRight(QGLShaderProgram *program)
@@ -97,7 +103,7 @@ void Geometry::drawGeometryRight(QGLShaderProgram *program)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
 
-    glDrawElements(GL_QUADS, this->Npts, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_QUADS, this->Ndpts, GL_UNSIGNED_INT, 0);
 
 }
 
@@ -108,7 +114,7 @@ void Geometry::drawGrid(QGLShaderProgram *program)
     program->enableAttributeArray(vertexLocation);
     glVertexAttribPointer(vertexLocation, 2, GL_FLOAT, GL_FALSE, sizeof(QVector2D), NULL);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[4]);
-    glDrawElements(GL_LINES, this->Ngpts, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_LINES, this->Nglns, GL_UNSIGNED_INT, 0);
 }
 
 void Geometry::setLogscale(bool log)
@@ -116,133 +122,49 @@ void Geometry::setLogscale(bool log)
     this->log = log;
 }
 
-void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc)
+//void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc)
+void Geometry::loadGeometry(double *gp, int ngp, int nc, int *ci, int nci, 
+                            int *gpi, int ngpi)
 {
+// gp: array of (x,y) locations of grid vertices: xi=gp[2*i], yi=[2*i+1]
+// ngp: number of grid vertices. length of gp is 2*ngp
+// nc: Total number of grid cells
+// ci: Array of indices (for "cells") to draw. 4 PER CELL.
+// nci: Number of cell indices (length of ci)
+// gpi: Grid Point Indices, indices of gp to draw
+// ngpi: length of gpi, equals twice the number of grid lines drawn.
+
     int i,j, c,d;
-    this->Npts = (Nc-Nt) * 4;
-    this->Ngpts = (Nc-Nt) * 4;
 
-    int count = 0;
-    for (i=0; i<Nt; ++i) {
-        count += Nr[i];
-        //fprintf(stderr, "%d -> %d\n", i, Nr[i]);
-    }
-    //fprintf(stderr, "nc = %d vs %d & %d\n", Nc, count, count * 4);
+    this->Ngpts = ngp;
+    this->Nglns = ngpi;
+    this->Ndpts_tot = 4*nc;
+    this->Ndpts = nci;
 
-    QVector2D *vertices = (QVector2D *)malloc(sizeof(QVector2D) * this->Npts );
-    QVector3D   *colors = (QVector3D *)malloc(sizeof(QVector3D) * this->Npts );
-    GLuint     *indices = (GLuint *)   malloc(sizeof(GLuint)    * this->Npts );
-    GLuint    *gindices = (GLuint *)   malloc(sizeof(GLuint)    * this->Ngpts);
-
+    QVector2D *vertices = (QVector2D *)malloc(sizeof(QVector2D) * this->Ngpts );
+    QVector3D   *colors = (QVector3D *)malloc(sizeof(QVector3D) * this->Ndpts_tot );
+    GLuint     *indices = (GLuint *)   malloc(sizeof(GLuint)    * this->Ndpts );
+    GLuint    *gindices = (GLuint *)   malloc(sizeof(GLuint)    * this->Nglns);
     c = 0;
-    d = 0;
-    double t0,t1,dt, r0,r1,dr;
+    for(c=0; c<this->Ngpts; c++)
+        vertices[c] = QVector2D((float)gp[2*c], (float)gp[2*c+1]);
+    for(c=0; c<nci; c++)
+        indices[c] = ci[c];
+    for(c=0; c<this->Ndpts_tot; c++)
+        colors[c] = QVector3D(1.0f, 1.0f, 1.0f);
+    for(c=0; c<this->Nglns; c++)
+        gindices[c] = gpi[c];
 
-    if (Nt > 0) {
-        for (i=0; i<Nt; ++i) {
-            t0 = t_jph[i]; t1 = t_jph[i+1];
-            dt = (t1 - t0) * 0.01;
-            t0 -= dt; t1 += dt;
-
-            for (j=1; j<Nr[i]; ++j) {
-
-                // DEBUG
-
-                r0 = r_iph[i][j-1]; r1 = r_iph[i][j];
-                dr = (r1 - r0) * 0.05;
-                r0 -= dr; r1 += dr;
-
-                //r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
-
-                // Bottom right
-                vertices[c] = QVector2D((float)(r0*cos(t0)), (float)(r0*sin(t0)));
-                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-                indices[c]  = c;
-                c++;
-
-                // Bottom left
-                vertices[c] = QVector2D((float)(r0*cos(t1)), (float)(r0*sin(t1)));
-                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-                indices[c]  = c;
-                c++;
-
-                // Top left
-                vertices[c] = QVector2D((float)(r1*cos(t1)), (float)(r1*sin(t1)));
-                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-                indices[c]  = c;
-                c++;
-
-                // Top right
-                vertices[c] = QVector2D((float)(r1*cos(t0)), (float)(r1*sin(t0)));
-                colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-                indices[c]  = c;
-                c++;
-
-                // BR -> TR
-                gindices[d] = c-4; d++;
-                gindices[d] = c-1; d++;
-
-                // BR -> BL
-                gindices[d] = c-4; d++;
-                gindices[d] = c-3; d++;
-
-                // BL -> TL
-                //gindices[d] = c-3; d++;
-                //gindices[d] = c-2; d++;
-            }
-        }
-    } else {
-        for (j=1; j<Nr[0]; ++j) {
-            r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
-            dr = (r1 - r0) * 0.05;
-            r0 -= dr; r1 += dr;
-
-            // Bottom right
-            vertices[c] = QVector2D((float)(r0), (float)(0.0));
-            colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-            indices[c]  = c;
-            c++;
-
-            // Bottom left
-            vertices[c] = QVector2D((float)(r0), (float)(1.0));
-            colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-            indices[c]  = c;
-            c++;
-
-            // Top left
-            vertices[c] = QVector2D((float)(r1), (float)(1.0));
-            colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-            indices[c]  = c;
-            c++;
-
-            // Top right
-            vertices[c] = QVector2D((float)(r1), (float)(0.0));
-            colors[c]   = QVector3D(1.0f, 1.0f, 1.0f);
-            indices[c]  = c;
-            c++;
-
-            // BR -> TR
-            gindices[d] = c-4; d++;
-            gindices[d] = c-1; d++;
-
-            // BR -> BL
-            gindices[d] = c-4; d++;
-            gindices[d] = c-3; d++;
-        }
-
-    }
-
-    // Send data to the GPU
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[0]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector2D), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ngpts * sizeof(QVector2D), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[1]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[2]);
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Npts * sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Ndpts * sizeof(GLuint), indices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[4]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Ngpts * sizeof(GLuint), gindices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Nglns * sizeof(GLuint), gindices, GL_STATIC_DRAW);
 
     // Housekeeping
     free(vertices);
@@ -263,7 +185,7 @@ void Geometry::cycleCmap()
     this->colormap = (this->colormap + 1) % CMAP::NUM;
 }
 
-void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, int q)
+void Geometry::setValue(bool isLeft, int Nc, double **cells, int q)
 {
     QVector3D *colors   = (QVector3D *)malloc(sizeof(QVector3D) * Nc * 4);
 
@@ -283,10 +205,13 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
     }
     else m = 1.0 / (x1 - x0);
 
-    int i,j, c=0;
-    for (i=0; i<Nt; ++i) {
-        for (j=1; j<Nr[i]; ++j) {
-            double value = cells[q][i][j];
+    //int i, j, c=0;
+    int i, c=0;
+    for (i=0; i<Nc; ++i) {
+    //for (i=0; i<Nt; ++i) {
+        //for (j=1; j<Nr[i]; ++j) {
+            //double value = cells[q][i][j];
+            double value = cells[q][i];
 
             if (this->log) value = log10(value);
 
@@ -302,7 +227,7 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
             colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
             colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
             colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
-        }
+        //}
     }
 
     if (isLeft) {
@@ -311,7 +236,7 @@ void Geometry::setValue(bool isLeft, int Nt, int *Nr, int Nc, double ***cells, i
     }
     else glBindBuffer(GL_ARRAY_BUFFER, this->vbos[2]);
 
-    glBufferData(GL_ARRAY_BUFFER, this->Npts * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
 
     free(colors);
 }
