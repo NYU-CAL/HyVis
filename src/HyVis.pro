@@ -20,6 +20,7 @@ SOURCES += main.cpp\
     viewer.cpp \
     geometry.cpp \
     filedata.cpp \
+    jetdata.cpp \
     querywindow.cpp \
     qcustomplot.cpp \
     plot2dviewer.cpp \
@@ -29,6 +30,7 @@ HEADERS  += controlwindow.h \
     viewer.h \
     geometry.h \
     filedata.h \
+    jetdata.h \
     querywindow.h \
     qcustomplot.h \
     plot2dviewer.h \

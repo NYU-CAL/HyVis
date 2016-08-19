@@ -53,35 +53,31 @@ public:
     FileData();
     ~FileData();
 
-    bool loadFromFile(const char *filename);
     int get_nc();
     int get_nq();
     double **get_minmax();
     double **get_cells();
     double *get_bounds();
-    void getValuesAt(double x, double y, double *values);
-    int getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
-    int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
-
-    void genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi);
-
     bool fileLoaded;
+    
+    virtual bool loadFromFile(const char *filename)=0;
+    virtual void getValuesAt(double x, double y, double *values)=0;
+    virtual int getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)=0;
+    virtual int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)=0;
 
-private:
+    virtual void genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)=0;
 
-    // These all relate to JET specific variables
-    int numPhi, numTheta;
+protected:
+
     int numCells, numQ;
     double time;
-    int *Nr;         // An array of numTheta #-of-radial-zones values
-    double *t_jph;   // An array of numTheta+1 angle values
-    double **r_iph;  // [i][j] -> j'th radial position of i'th ray
-    //double ***cells; // [i][j][k] -> i'th value of k'th cell in j'th ray
     double **cells; // [i][j] -> i'th value of j'th cell in grid
     double **minmax; // [ [min0, min1, min2, ...] , [max0, max1, max2, ...] ] <-> [type,q]
     double bounds[4]; // [xmin xmax ymin ymax]
-
+    
     void readPatch(hid_t *h5dst , void *data, hid_t type, int * start, int *loc_size, int *glo_size);
+
+private:
 
     void freeAll();
 
