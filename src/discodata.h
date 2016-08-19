@@ -62,13 +62,13 @@ public:
 
 private:
 
-    // These all relate to JET specific variables
-    int numPhi, numTheta;
-    int *Nr;         // An array of numTheta #-of-radial-zones values
-    double *t_jph;   // An array of numTheta+1 angle values
-    double **r_iph;  // [i][j] -> j'th radial position of i'th ray
+    // These all relate to DISCO specific variables
+    int numR, numZ;
+    int *Np;         // An array of numR #-of-phi-zones values
+    double *r_jph;   // An array of numR+1 radial values
+    double *z_kph;   // An array of numZ+1 vertical values
+    double **p_iph;  // [j][i] -> i'th azimuthal position of j'th annulus
     void freeAll();
-
 };
 
 #endif // FILEDATA_H

@@ -4,6 +4,7 @@
 #include "geometry.h"
 #include "filedata.h"
 #include "jetdata.h"
+#include "discodata.h"
 #include "querywindow.h"
 #include "plot2dviewer.h"
 #include <controlwindow.h>
@@ -91,7 +92,7 @@ protected:
 private:
     bool glDoneInit;
     Geometry g; // What did the acorn say when it grew up?
-    JetData filedata;
+    DiscoData filedata;
     QGLShaderProgram program;
     QGLShaderProgram whiteprogram;
     QMatrix4x4 matrix;

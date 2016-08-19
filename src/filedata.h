@@ -37,7 +37,7 @@
 #ifndef FILEDATA_H
 #define FILEDATA_H
 
-#define FILEDATA_VERBOSE 0
+#define FILEDATA_VERBOSE 1
 
 #include <hdf5.h>
 #include <cstdio>

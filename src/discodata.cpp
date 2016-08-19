@@ -1,11 +1,12 @@
+#include <float.h>
 #include "filedata.h"
-#include "jetdata.h"
+#include "discodata.h"
 
 DiscoData::DiscoData()
 {
     this->numCells = 0;
-    this->numPhi = 1;
-    this->numTheta = 0;
+    this->numR = 1;
+    this->numZ = 1;
     this->time = 0.0;
     this->fileLoaded = false;
 
@@ -13,9 +14,10 @@ DiscoData::DiscoData()
 
     // Initialize null pointers;
     this->cells = NULL;
-    this->r_iph = NULL;
-    this->t_jph = NULL;
-    this->Nr = NULL;
+    this->p_iph = NULL;
+    this->r_jph = NULL;
+    this->z_kph = NULL;
+    this->Np = NULL;
     this->minmax[0] = NULL;
     this->minmax[1] = NULL;
     this->bounds[0] = 0.0;
@@ -32,12 +34,12 @@ DiscoData::~DiscoData()
 bool DiscoData::loadFromFile(const char *filename)
 {
     // Useful variables
-    int i, j;
+    int i, j, q, count;
     hsize_t dims[3];
     int start[2];
     int loc_size[2];
     int glo_size[2];
-    int *tindex;
+    int *pindex;
 
     #if FILEDATA_VERBOSE
     fprintf(stderr, "Loading data from file: %s\n", filename);
@@ -68,43 +70,62 @@ bool DiscoData::loadFromFile(const char *filename)
         H5Dread(h5_t, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (void *)&(this->time));
         H5Dclose(h5_t);
 
-        // Get number of phi plates
-        this->numPhi = 1;   // Technically, I could load this; however, becaues the code
-                            // doesn't support nphi>1, I'll leave it as is.
-
-        // Get number of theta rays
-        hid_t h5_theta = H5Dopen1(h5gridgroup, "t_jph");
-        hid_t h5_theta_spc = H5Dget_space(h5_theta);
-        H5Sget_simple_extent_dims(h5_theta_spc, dims, NULL);
-        this->numTheta = dims[0] - 1; // TODO ... setting things here causes issues.
-        H5Sclose(h5_theta_spc);
-
-        // Then we actually load the t_jph angles
-        this->t_jph = (double *)malloc(dims[0] * sizeof(double));
+        // Get number of z plates
+        hid_t h5_z = H5Dopen1(h5gridgroup, "z_kph");
+        hid_t h5_z_spc = H5Dget_space(h5_z);
+        H5Sget_simple_extent_dims(h5_z_spc, dims, NULL);
+        this->numZ = dims[0] - 1; // TODO ... setting things here causes issues. ???
+        H5Sclose(h5_z_spc);
+        
+        // Then we actually load the z_kph heights
+        this->z_kph = (double *)malloc(dims[0] * sizeof(double));
         start[0] = 0; start[1] = 0;
         loc_size[0] = dims[0]; loc_size[1] = 1;
         glo_size[0] = dims[0]; glo_size[1] = 1;
-        readPatch(&h5_theta, this->t_jph, H5T_NATIVE_DOUBLE, start, loc_size, glo_size);
-        H5Dclose(h5_theta);
+        readPatch(&h5_z, this->z_kph, H5T_NATIVE_DOUBLE, start, loc_size, glo_size);
+        H5Dclose(h5_z);
+    
+        // Get number of r annuli
+        hid_t h5_r = H5Dopen1(h5gridgroup, "r_jph");
+        hid_t h5_r_spc = H5Dget_space(h5_r);
+        H5Sget_simple_extent_dims(h5_r_spc, dims, NULL);
+        this->numR = dims[0] - 1; // TODO ... setting things here causes issues. ???
+        H5Sclose(h5_r_spc);
 
-        // ... and we get the number of radial cells per theta ray
-        this->Nr = (int *)malloc(this->numTheta * sizeof(int));
-        hid_t h5_Nr = H5Dopen1(h5gridgroup, "Nr");
-        loc_size[0]--; glo_size[0]--;
-        readPatch(&h5_Nr, this->Nr, H5T_NATIVE_INT, start, loc_size, glo_size);
-        H5Dclose(h5_Nr);
+        // Then we actually load the r_jph radii
+        this->r_jph = (double *)malloc(dims[0] * sizeof(double));
+        start[0] = 0; start[1] = 0;
+        loc_size[0] = dims[0]; loc_size[1] = 1;
+        glo_size[0] = dims[0]; glo_size[1] = 1;
+        readPatch(&h5_r, this->r_jph, H5T_NATIVE_DOUBLE, start, loc_size, glo_size);
+        H5Dclose(h5_r);
+
+        //We only load the equatorial slice!
+        int k = this->numZ / 2;
+
+        // ... and we get the number of phi cells per annulus
+        this->Np = (int *)malloc(this->numR * sizeof(int));
+        hid_t h5_Np = H5Dopen1(h5gridgroup, "Np");
+        start[0] = 0; start[1] = k;
+        loc_size[0] = this->numR; loc_size[1] = 1;
+        glo_size[0] = this->numR; glo_size[1] = 1;
+        readPatch(&h5_Np, this->Np, H5T_NATIVE_INT, start, loc_size, glo_size);
+        H5Dclose(h5_Np);
 
         // ... and finally, we load the indices for the cells, into a temp array.
-        tindex = (int *)malloc(this->numTheta * sizeof(int));
-        hid_t h5_tindex = H5Dopen1(h5gridgroup, "Index");
-        readPatch(&h5_tindex, tindex, H5T_NATIVE_INT, start, loc_size, glo_size);
-        H5Dclose(h5_tindex);
+        pindex = (int *)malloc(this->numR * sizeof(int));
+        hid_t h5_pindex = H5Dopen1(h5gridgroup, "Index");
+        readPatch(&h5_pindex, pindex, H5T_NATIVE_INT, start, loc_size, glo_size);
+        H5Dclose(h5_pindex);
 
     // Then we load the information in the cells (geometry + values)
     hid_t h5_cells = H5Dopen1(h5datagroup, "Cells");
     hid_t h5_cells_spc = H5Dget_space(h5_cells);
     H5Sget_simple_extent_dims(h5_cells_spc, dims, NULL);
-    this->numCells = dims[0];
+
+    this->numCells = 0;
+    for(j=0; j<this->numR; j++)
+        this->numCells += this->Np[j];
     this->numQ = dims[1] - 1;
     H5Sclose(h5_cells_spc);
 
@@ -112,66 +133,58 @@ bool DiscoData::loadFromFile(const char *filename)
     this->minmax[0] = (double *)malloc(sizeof(double) * this->numQ);
     this->minmax[1] = (double *)malloc(sizeof(double) * this->numQ);
 
-    this->r_iph = (double **)malloc(sizeof(double *) * this->numTheta);
+    this->p_iph = (double **)malloc(sizeof(double *) * this->numR);
     this->cells = (double **)malloc(sizeof(double *) * this->numQ);
     for (i=0; i<this->numQ; ++i) {
         cells[i] = (double *)malloc(sizeof(double) * this->numCells);
     }
 
     loc_size[1] = this->numQ+1;
-    glo_size[0] = this->numCells; glo_size[1] = this->numQ + 1;
-    start[0] = - this->Nr[0];
+    glo_size[0] = dims[0]; glo_size[1] = this->numQ + 1;
+    start[1] = 0;
     
-    int count = 0;
-    for (i=0; i<this->numTheta; ++i) {
-        this->r_iph[i] = (double *)malloc(sizeof(double) * (Nr[i]+1));
-        loc_size[0] = this->Nr[i];
-        start[0] = tindex[i];
-        double buffer[this->Nr[i] * (this->numQ+1)];
+    for (q=0; q<this->numQ; q++) {
+        this->minmax[0][j] = DBL_MAX;
+        this->minmax[1][j] = -DBL_MAX;
+    }
+    
+    count = 0;
+    for (j=0; j<this->numR; j++)
+    {
+        this->p_iph[j] = (double *)malloc(sizeof(double) * Np[j]);
+        loc_size[0] = this->Np[j];
+        start[0] = pindex[j];
+        double buffer[this->Np[j] * (this->numQ+1)];
         readPatch(&h5_cells, buffer, H5T_NATIVE_DOUBLE, start, loc_size, glo_size);
 
-        // (this is annoying, but it's the best way to do it)
-        if (i==0) {
-            for (j=0; j<this->numQ; ++j) {
-                this->minmax[0][j] = buffer[j];
-                this->minmax[1][j] = buffer[j];
-            }
-        }
-
         // Load from the buffer into the proper class variables
-        this->r_iph[i][0] = 0.0;
-        for (j=0; j<Nr[i]; ++j) {
-            this->r_iph[i][j+1] = buffer[j * (this->numQ + 1) + this->numQ];
-            for (int k=0; k<this->numQ; ++k) {
-                this->cells[k][count+j] = buffer[j * (this->numQ + 1) + k];
-                if (this->minmax[0][k] > this->cells[k][count+j]) this->minmax[0][k] = this->cells[k][count+j];
-                if (this->minmax[1][k] < this->cells[k][count+j]) this->minmax[1][k] = this->cells[k][count+j];
+        for (i=0; i<Np[j]; i++)
+        {
+            this->p_iph[j][i] = buffer[i * (this->numQ + 1) + this->numQ];
+            for (q = 0; q < this->numQ; q++)
+            {
+                this->cells[q][count+i] = buffer[i * (this->numQ + 1) + q];
+                if (this->minmax[0][q] > this->cells[k][count+j]) 
+                    this->minmax[0][q] = this->cells[k][count+j];
+                if (this->minmax[1][q] < this->cells[k][count+j]) 
+                    this->minmax[1][q] = this->cells[k][count+j];
             }
         }
-        count += Nr[i];
+        count += Np[j];
     }
 
-    double th0 = this->t_jph[0];
-    double th1 = this->t_jph[this->numTheta];
-    double r0 = this->r_iph[0][0];
-    double r1 = this->r_iph[0][this->Nr[0]];
-    double xmin = fmin(r0*cos(th1), r1*cos(th1));
-    double xmax = r1*cos(th0);
-    double ymin = fmin(r0*sin(th0), r0*sin(th1));
-    double ymax = fmax(r1*sin(th0), r1*sin(th1));
-    this->bounds[0] = xmin;
-    this->bounds[1] = xmax;
-    this->bounds[2] = ymin;
-    this->bounds[3] = ymax;
-
-    H5Dclose(h5_cells);
+    this->bounds[0] = -this->r_jph[this->numR];
+    this->bounds[1] =  this->r_jph[this->numR];
+    this->bounds[2] = -this->r_jph[this->numR];
+    this->bounds[3] =  this->r_jph[this->numR];
 
     // Housekeeping!
+    H5Dclose(h5_cells);
     H5Gclose(h5gridgroup);
     H5Gclose(h5datagroup);
     H5Fclose(h5file);
 
-    free(tindex);
+    free(pindex);
 
     this->fileLoaded = true;
 
@@ -187,95 +200,130 @@ bool DiscoData::loadFromFile(const char *filename)
 // simply returns.
 void DiscoData::getValuesAt(double x, double y, double *values)
 {
-    int i,j,k;
+    int i,j,q;
     bool valid = false;
-    double theta = atan(y/x);
+    bool before = false;
+    double phi = atan2(y,x);
     double r = sqrt(x*x + y*y);
 
-    // Find theta location
-    int count = 0;
-    if (theta < this->t_jph[0]) return;
-    for (i=0; i<this->numTheta; ++i) {
-        if (theta < this->t_jph[i+1]) {
-            valid = true;
-            break;
-        }
-        count += this->Nr[i];
-    }
-    if (!valid) return;
-
     // Find r location
+    int count = 0;
+    if(r < this->r_jph[0])
+        return;
+    for(j = 0; j < this->numR; j++)
+    {
+        if (r < this->r_jph[j+1]) 
+        {
+            valid = true;
+            break;
+        }
+        count += this->Np[j];
+    }
+    if (!valid) 
+        return;
+
+    // Find phi location
     valid = false;
-    if (r < this->r_iph[i][0]) return;
-    for (j=0; j<this->Nr[i]; ++j) {
-        if (r < this->r_iph[i][j+1]) {
+
+    for(i = 0; i < this->Np[j]; i++)
+    {
+        double diff = this->p_iph[j][i] - phi;
+        while(diff < -M_PI)
+            diff += 2*M_PI;
+        while(diff > M_PI)
+            diff -= 2*M_PI;
+
+        if (diff < 0.0) 
+            before = true;
+        if(before && diff > 0.0)
+        {
             valid = true;
             break;
         }
     }
-    if (!valid) return;
+    if(!valid)
+    {
+        i = 0;
+        valid = true;
+    }
 
     // Updates the values
-    for (k=0; k<this->numQ; ++k) {
-        values[k] = this->cells[k][count+j];
-    }
+    for (q=0; q<this->numQ; q++)
+        values[q] = this->cells[q][count+i];
 }
 
 int DiscoData::getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)
 {
-    int i,j,count=0;
-    bool valid = false;
-    double theta = atan(y/x);
+    int i,j, size=0, count=0;
+    bool valid;
+    double phi = atan2(y,x);
 
-    if (theta < this->t_jph[0]) return 0;
-    for (i=0; i<this->numTheta; ++i) {
-        if (theta < this->t_jph[i+1]) {
-            valid = true;
-            break;
+    for(j = 0; j < this->numR; j++)
+    {
+        valid = false;
+
+        for(i = 0; i < this->Np[j]; i++)
+        {
+            double diff = this->p_iph[j][i] - phi;
+            while(diff < -M_PI)
+                diff += 2*M_PI;
+            while(diff > M_PI)
+                diff -= 2*M_PI;
+
+            if (diff < 0.0) 
+                valid = true;
+            if(valid && diff > 0.0)
+                break;
         }
-        count += this->Nr[i];
-    }
-    if (!valid) return 0;
+        if(!valid)
+            i = 0;
 
-    // Populate x & y data
-    for (j=0; j<this->Nr[i]; ++j) {
-        xdata->push_back(0.5*(this->r_iph[i][j]+this->r_iph[i][j+1]));
-        ydata->push_back(this->cells[n][count+j]);
+        xdata->push_back(0.5*(this->r_jph[j]+this->r_jph[j+1]));
+        ydata->push_back(this->cells[n][count+i]);
+
+        count += this->Np[j];
     }
 
-    return Nr[i];
+    size = this->numR;
+
+    return size;
 }
 
 int DiscoData::getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)
 {
-    int i,j, size=0, count=0;
-    bool valid;
-    double r = sqrt(x*x + y*y);
+    int i,j,count=0;
+    bool valid = false;
+    double r = sqrt(x*x+y*y);
 
-    for (i=0; i<this->numTheta; ++i) {
-        valid = false;
-        if (r < this->r_iph[i][0]) continue;
-        for (j=0; j<this->Nr[i]; ++j) {
-            if (r < this->r_iph[i][j+1]) {
-                valid = true;
-                break;
-            }
+    if (r < this->r_jph[0])
+        return 0;
+    for (j=0; j<this->numR; j++)
+    {
+        if (r < this->r_jph[j+1]) {
+            valid = true;
+            break;
         }
-        if (!valid) continue;
+        count += this->Np[j];
+    }
+    if (!valid) return 0;
 
-        size ++;
-        xdata->push_back(0.5*(this->t_jph[i]+this->t_jph[i+1]));
-        ydata->push_back(this->cells[n][count+j]);
-
-        count += this->Nr[i];
+    // Populate x & y data
+    for (i=0; i<this->Np[j]; i++)
+    {
+        xdata->push_back(0.5*(this->p_iph[j][i]+this->p_iph[j][i+1]));
+        ydata->push_back(this->cells[n][count+i]);
     }
 
-    return size;
+    return Np[j];
 }
 
 void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)
 {
     int i,j,c,l,v;
+
+    #if FILEDATA_VERBOSE
+    fprintf(stderr, "Generating grid data...\n");
+    #endif
 
     *nci = 4*this->numCells;
     *ngp = 4*this->numCells;
@@ -285,89 +333,58 @@ void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi
     *ci = (int *) malloc((*nci) * sizeof(int));
     *gpi = (int *) malloc((*ngpi) * sizeof(int));
 
-    double t0,t1,dt, r0,r1,dr;
+    double p0,p1,dp, r0,r1,dr;
 
     l=0;
     v=0;
+    
+    for(j=0; j<this->numR; j++)
+    {
+        r0 = this->r_jph[j]; 
+        r1 = this->r_jph[j+1];
+        dr = (r1 - r0) * 0.01;
+        r0 -= dr; r1 += dr;
+        
+        for (i=0; i<this->Np[j]; i++)
+        {
 
-    if (this->numTheta > 0) {
-        for (i=0; i<this->numTheta; ++i) {
-            t0 = this->t_jph[i]; 
-            t1 = this->t_jph[i+1];
-            dt = (t1 - t0) * 0.01;
-            t0 -= dt; t1 += dt;
+            // DEBUG
 
-            for (j=0; j<this->Nr[i]; ++j) {
-
-                // DEBUG
-
-                r0 = this->r_iph[i][j];
-                r1 = this->r_iph[i][j+1];
-                dr = (r1 - r0) * 0.05;
-                r0 -= dr; r1 += dr;
-
-                //r0 = r_iph[0][j-1]; r1 = r_iph[0][j];
-                
-
-                // Bottom right
-                (*gp)[2*v] = r0*cos(t0);
-                (*gp)[2*v+1] = r0*sin(t0);
-                (*ci)[v] = v;
-                v++;
-
-                // Bottom left
-                (*gp)[2*v] = r0*cos(t1);
-                (*gp)[2*v+1] = r0*sin(t1);
-                (*ci)[v] = v;
-                v++;
-
-                // Top left
-                (*gp)[2*v] = r1*cos(t1);
-                (*gp)[2*v+1] = r1*sin(t1);
-                (*ci)[v] = v;
-                v++;
-
-                // Top right
-                (*gp)[2*v] = r1*cos(t0);
-                (*gp)[2*v+1] = r1*sin(t0);
-                (*ci)[v] = v;
-                v++;
-
-                // BR -> TR
-                (*gpi)[l] = v-4; l++;
-                (*gpi)[l] = v-1; l++;
-
-                // BR -> BL
-                (*gpi)[l] = v-4; l++;
-                (*gpi)[l] = v-3; l++;
-            }
-        }
-    } else {
-        for (j=0; j<this->Nr[0]; ++j) {
-            r0 = r_iph[0][j]; r1 = r_iph[0][j+1];
-            dr = (r1 - r0) * 0.05;
-            r0 -= dr; r1 += dr;
-
-            (*ci)[c] = c; c++;
+            p0 = this->p_iph[j][i];
+            if(i+1 < this->Np[j])
+                p1 = this->p_iph[j][i+1];
+            else
+                p1 = this->p_iph[j][0];
+            dp = (p1 - p0);
+            while(dp < 0.0)
+                dp += 2*M_PI;
+            while(dp > 2*M_PI)
+                dp -= 2*M_PI;
+            dp *= 0.05;
+            p0 -= dp; p1 += dp;
 
             // Bottom right
-            (*gp)[2*v] = r0;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[2*v] = r0*cos(p0);
+            (*gp)[2*v+1] = r0*sin(p0);
+            (*ci)[v] = v;
             v++;
 
             // Bottom left
-            (*gp)[2*v] = r0;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[2*v] = r0*cos(p1);
+            (*gp)[2*v+1] = r0*sin(p1);
+            (*ci)[v] = v;
             v++;
 
             // Top left
-            (*gp)[2*v] = r1;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[2*v] = r1*cos(p1);
+            (*gp)[2*v+1] = r1*sin(p1);
+            (*ci)[v] = v;
             v++;
 
             // Top right
-            (*gp)[2*v] = r1;
-            (*gp)[2*v+1] = 0.0;
+            (*gp)[2*v] = r1*cos(p0);
+            (*gp)[2*v+1] = r1*sin(p0);
+            (*ci)[v] = v;
             v++;
 
             // BR -> TR
@@ -379,7 +396,10 @@ void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi
             (*gpi)[l] = v-3; l++;
         }
     }
-
+    
+    #if FILEDATA_VERBOSE
+    fprintf(stderr, "Done generating grid data.\n");
+    #endif
 }
 
 //Free's only DiscoData specific elements. FileData destructor takes care
@@ -389,17 +409,19 @@ void DiscoData::freeAll()
     if ( !this->fileLoaded ) 
         return;
 
-    if (this->Nr != NULL) 
-        free(this->Nr);
-    if (this->t_jph != NULL) 
-        free(this->t_jph);
+    if (this->Np != NULL) 
+        free(this->Np);
+    if (this->r_jph != NULL) 
+        free(this->r_jph);
+    if (this->z_kph != NULL) 
+        free(this->z_kph);
 
-    int i,j;
-    for (i=0; i<this->numTheta; ++i) {
-        if (this->r_iph != NULL && this->r_iph[i] != NULL) 
-            free(this->r_iph[i]);
+    int j;
+    for (j=0; j<this->numR; ++j) {
+        if (this->p_iph != NULL && this->p_iph[j] != NULL) 
+            free(this->p_iph[j]);
     }
-
-    if (this->r_iph != NULL) free(this->r_iph);
+    if (this->p_iph != NULL)
+        free(this->p_iph);
 }
 
