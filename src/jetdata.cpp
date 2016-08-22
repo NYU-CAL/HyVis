@@ -274,7 +274,8 @@ int JetData::getValuesAtR(double x, double y, int n, std::vector<double> *xdata,
     return size;
 }
 
-void JetData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)
+void JetData::genGridData(QVector2D **gp, int *ngp, GLuint **ci, int *nci, 
+                            GLuint **gpi, int *ngpi)
 {
     int i,j,c,l,v;
 
@@ -282,9 +283,9 @@ void JetData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, 
     *ngp = 4*this->numCells;
     *ngpi = 4*this->numCells;
 
-    *gp = (double *) malloc(2 * (*ngp) * sizeof(double));
-    *ci = (int *) malloc((*nci) * sizeof(int));
-    *gpi = (int *) malloc((*ngpi) * sizeof(int));
+    *gp = (QVector2D *) malloc((*ngp) * sizeof(QVector2D));
+    *ci = (GLuint *) malloc((*nci) * sizeof(GLuint));
+    *gpi = (GLuint *) malloc((*ngpi) * sizeof(GLuint));
 
     double t0,t1,dt, r0,r1,dr;
 
@@ -311,26 +312,22 @@ void JetData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, 
                 
 
                 // Bottom right
-                (*gp)[2*v] = r0*cos(t0);
-                (*gp)[2*v+1] = r0*sin(t0);
+                (*gp)[v] = QVector2D((float) r0*cos(t0), (float) r0*sin(t0));
                 (*ci)[v] = v;
                 v++;
 
                 // Bottom left
-                (*gp)[2*v] = r0*cos(t1);
-                (*gp)[2*v+1] = r0*sin(t1);
+                (*gp)[v] = QVector2D((float) r0*cos(t1), (float) r0*sin(t1));
                 (*ci)[v] = v;
                 v++;
 
                 // Top left
-                (*gp)[2*v] = r1*cos(t1);
-                (*gp)[2*v+1] = r1*sin(t1);
+                (*gp)[v] = QVector2D((float) r1*cos(t1), (float) r1*sin(t1));
                 (*ci)[v] = v;
                 v++;
 
                 // Top right
-                (*gp)[2*v] = r1*cos(t0);
-                (*gp)[2*v+1] = r1*sin(t0);
+                (*gp)[v] = QVector2D((float) r1*cos(t0), (float) r1*sin(t0));
                 (*ci)[v] = v;
                 v++;
 
@@ -352,23 +349,19 @@ void JetData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, 
             (*ci)[c] = c; c++;
 
             // Bottom right
-            (*gp)[2*v] = r0;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[v] = QVector2D((float) r0, 0.0f);
             v++;
 
             // Bottom left
-            (*gp)[2*v] = r0;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[v] = QVector2D((float) r0, 1.0f);
             v++;
 
             // Top left
-            (*gp)[2*v] = r1;
-            (*gp)[2*v+1] = 1.0;
+            (*gp)[v] = QVector2D((float) r1, 1.0f);
             v++;
 
             // Top right
-            (*gp)[2*v] = r1;
-            (*gp)[2*v+1] = 0.0;
+            (*gp)[v] = QVector2D((float) r1, 0.0f);
             v++;
 
             // BR -> TR

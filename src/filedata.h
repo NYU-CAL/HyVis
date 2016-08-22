@@ -46,6 +46,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <vector>
+#include <QVector2D>
+#include <QGLFunctions>
 
 class FileData
 {
@@ -65,7 +67,8 @@ public:
     virtual int getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)=0;
     virtual int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata)=0;
 
-    virtual void genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)=0;
+    virtual void genGridData(QVector2D **gp, int *ngp, GLuint **ci, int *nci, 
+                            GLuint **gpi, int *ngpi)=0;
 
 protected:
 

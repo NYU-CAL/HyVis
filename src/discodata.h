@@ -56,7 +56,8 @@ public:
     int getValuesAtTheta(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
     int getValuesAtR(double x, double y, int n, std::vector<double> *xdata, std::vector<double> *ydata);
 
-    void genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi);
+    void genGridData(QVector2D **gp, int *ngp, GLuint **ci, int *nci, 
+                        GLuint **gpi, int *ngpi);
 
 private:
 

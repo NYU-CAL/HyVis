@@ -75,11 +75,13 @@ bool Viewer::loadFile(const char *filename)
     if (this->glDoneInit) {
         this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
 
-        double *gp;
-        int ngp, *ci, nci, *gpi, ngpi;
+        QVector2D *gp;
+        GLuint *ci, *gpi;
+        int ngp, nci, ngpi;
         this->filedata.genGridData(&gp, &ngp, &ci, &nci, &gpi, &ngpi);
 
-        this->g.loadGeometry(gp, ngp, this->filedata.get_nc(), ci, nci, gpi, ngpi);
+        this->g.loadGeometry(gp, ngp, this->filedata.get_nc(), ci, nci, 
+                                gpi, ngpi);
         free(gp);
         free(ci);
         free(gpi);

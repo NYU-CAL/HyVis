@@ -122,59 +122,52 @@ void Geometry::setLogscale(bool log)
     this->log = log;
 }
 
-//void Geometry::loadGeometry(double *t_jph, double **r_iph, int Nt, int *Nr, int Nc)
-void Geometry::loadGeometry(double *gp, int ngp, int nc, int *ci, int nci, 
-                            int *gpi, int ngpi)
+void Geometry::loadGeometry(QVector2D *vertices, int nv, int nc, 
+                            GLuint *indices, int ni, 
+                            GLuint *gindices, int ngi)
 {
-// gp: array of (x,y) locations of grid vertices: xi=gp[2*i], yi=[2*i+1]
-// ngp: number of grid vertices. length of gp is 2*ngp
+// vertices: array of (x,y) locations of grid vertices.
+// nv: number of grid vertices. length of gp is nv
 // nc: Total number of grid cells
-// ci: Array of indices (for "cells") to draw. 4 PER CELL.
-// nci: Number of cell indices (length of ci)
-// gpi: Grid Point Indices, indices of gp to draw
-// ngpi: length of gpi, equals twice the number of grid lines drawn.
+// indices: Array of indices (for "cells") to draw. 4 PER CELL.
+// ni: Length of indices
+// gindices: Grid Point Indices, indices of grid lines to draw
+// ngi: length of gindices, equals twice the number of grid lines drawn.
 
     #if GEOMETRY_VERBOSE
     fprintf(stderr, "Geom: loadGeometry()...\n");
     #endif
 
-    int i,j, c,d;
+    int c;
 
-    this->Ngpts = ngp;
-    this->Nglns = ngpi;
+    this->Ngpts = nv;
+    this->Nglns = ngi;
     this->Ndpts_tot = 4*nc;
-    this->Ndpts = nci;
+    this->Ndpts = ni;
 
-    QVector2D *vertices = (QVector2D *)malloc(sizeof(QVector2D) * this->Ngpts );
-    QVector3D   *colors = (QVector3D *)malloc(sizeof(QVector3D) * this->Ndpts_tot );
-    GLuint     *indices = (GLuint *)   malloc(sizeof(GLuint)    * this->Ndpts );
-    GLuint    *gindices = (GLuint *)   malloc(sizeof(GLuint)    * this->Nglns);
-    c = 0;
-    for(c=0; c<this->Ngpts; c++)
-        vertices[c] = QVector2D((float)gp[2*c], (float)gp[2*c+1]);
-    for(c=0; c<nci; c++)
-        indices[c] = ci[c];
+    QVector3D   *colors = (QVector3D *)malloc(sizeof(QVector3D)
+                                                * this->Ndpts_tot);
     for(c=0; c<this->Ndpts_tot; c++)
         colors[c] = QVector3D(1.0f, 1.0f, 1.0f);
-    for(c=0; c<this->Nglns; c++)
-        gindices[c] = gpi[c];
 
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[0]);
-    glBufferData(GL_ARRAY_BUFFER, this->Ngpts * sizeof(QVector2D), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ngpts * sizeof(QVector2D), vertices, 
+                    GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[1]);
-    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors,
+                    GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, this->vbos[2]);
-    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, 
+                    GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[3]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Ndpts * sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Ndpts*sizeof(GLuint), indices,
+                    GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->vbos[4]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Nglns * sizeof(GLuint), gindices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->Nglns*sizeof(GLuint), gindices,
+                    GL_STATIC_DRAW);
 
     // Housekeeping
-    free(vertices);
     free(colors);
-    free(indices);
-    free(gindices);
 
     #if GEOMETRY_VERBOSE
     fprintf(stderr, "Geom: loadGeometry()... done.\n");

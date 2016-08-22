@@ -378,7 +378,8 @@ int DiscoData::getValuesAtR(double x, double y, int n, std::vector<double> *xdat
     return Np[j];
 }
 
-void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)
+void DiscoData::genGridData(QVector2D **gp, int *ngp, GLuint **ci, int *nci, 
+                            GLuint **gpi, int *ngpi)
 {
     int i,j,l,v;
 
@@ -390,9 +391,9 @@ void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi
     *ngp = 4*this->numCells;
     *ngpi = 4*this->numCells;
 
-    *gp = (double *) malloc(2 * (*ngp) * sizeof(double));
-    *ci = (int *) malloc((*nci) * sizeof(int));
-    *gpi = (int *) malloc((*ngpi) * sizeof(int));
+    *gp = (QVector2D *) malloc((*ngp) * sizeof(QVector2D));
+    *ci = (GLuint *) malloc((*nci) * sizeof(GLuint));
+    *gpi = (GLuint *) malloc((*ngpi) * sizeof(GLuint));
 
     double p0,p1,dp, r0,r1,dr;
 
@@ -425,26 +426,22 @@ void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi
             p0 -= dp; p1 += dp;
 
             // Bottom right
-            (*gp)[2*v] = r0*cos(p0);
-            (*gp)[2*v+1] = r0*sin(p0);
+            (*gp)[v] = QVector2D((float) r0*cos(p0), (float) r0*sin(p0));
             (*ci)[v] = v;
             v++;
 
             // Bottom left
-            (*gp)[2*v] = r0*cos(p1);
-            (*gp)[2*v+1] = r0*sin(p1);
+            (*gp)[v] = QVector2D((float) r0*cos(p1), (float) r0*sin(p1));
             (*ci)[v] = v;
             v++;
 
             // Top left
-            (*gp)[2*v] = r1*cos(p1);
-            (*gp)[2*v+1] = r1*sin(p1);
+            (*gp)[v] = QVector2D((float) r1*cos(p1), (float) r1*sin(p1));
             (*ci)[v] = v;
             v++;
 
             // Top right
-            (*gp)[2*v] = r1*cos(p0);
-            (*gp)[2*v+1] = r1*sin(p0);
+            (*gp)[v] = QVector2D((float) r1*cos(p0), (float) r1*sin(p0));
             (*ci)[v] = v;
             v++;
 
