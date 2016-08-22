@@ -16,6 +16,8 @@
 
 #define HV_VERSION 0.6
 
+#define CONTROLWINDOW_VERBOSE 0
+
 class Viewer;
 
 namespace Ui {

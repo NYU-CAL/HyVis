@@ -37,7 +37,7 @@
 #ifndef FILEDATA_H
 #define FILEDATA_H
 
-#define FILEDATA_VERBOSE 1
+#define FILEDATA_VERBOSE 0
 
 #include <hdf5.h>
 #include <cstdio>
@@ -76,9 +76,6 @@ protected:
     double bounds[4]; // [xmin xmax ymin ymax]
     
     void readPatch(hid_t *h5dst , void *data, hid_t type, int * start, int *loc_size, int *glo_size);
-
-private:
-
     void freeAll();
 
 };

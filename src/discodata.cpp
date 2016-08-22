@@ -28,7 +28,7 @@ DiscoData::DiscoData()
 
 DiscoData::~DiscoData()
 {
-    this->freeAll();
+    this->freeAllDisco();
 }
 
 bool DiscoData::loadFromFile(const char *filename)
@@ -45,11 +45,19 @@ bool DiscoData::loadFromFile(const char *filename)
     fprintf(stderr, "Loading data from file: %s\n", filename);
     #endif
 
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Opening HDF5 file.\n");
+    #endif
+
     hid_t h5file = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (h5file < 0) {
         fprintf(stderr, "Unable to open h5 file.\n");
         return false;
     }
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Opening groups.\n");
+    #endif
 
     hid_t h5gridgroup = H5Gopen1(h5file, "Grid");
     hid_t h5datagroup = H5Gopen1(h5file, "Data");
@@ -59,16 +67,30 @@ bool DiscoData::loadFromFile(const char *filename)
         return false;
     }
 
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Freeing everything.\n");
+    #endif
+
     // For alpha purposes, we can assume this is the commit point -- and we'll free all memory...
     this->fileLoaded = false;
+    this->freeAllDisco();
     this->freeAll();
 
     // First step is loading the grid information
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Time.\n");
+    #endif
+
 
         // Get time
         hid_t h5_t = H5Dopen1(h5gridgroup, "T");
         H5Dread(h5_t, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (void *)&(this->time));
         H5Dclose(h5_t);
+
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  z_kph size.\n");
+    #endif
 
         // Get number of z plates
         hid_t h5_z = H5Dopen1(h5gridgroup, "z_kph");
@@ -76,6 +98,11 @@ bool DiscoData::loadFromFile(const char *filename)
         H5Sget_simple_extent_dims(h5_z_spc, dims, NULL);
         this->numZ = dims[0] - 1; // TODO ... setting things here causes issues. ???
         H5Sclose(h5_z_spc);
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  z_kph data.\n");
+    #endif
+
         
         // Then we actually load the z_kph heights
         this->z_kph = (double *)malloc(dims[0] * sizeof(double));
@@ -85,12 +112,21 @@ bool DiscoData::loadFromFile(const char *filename)
         readPatch(&h5_z, this->z_kph, H5T_NATIVE_DOUBLE, start, loc_size, glo_size);
         H5Dclose(h5_z);
     
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  r_jph size.\n");
+    #endif
+
+    
         // Get number of r annuli
         hid_t h5_r = H5Dopen1(h5gridgroup, "r_jph");
         hid_t h5_r_spc = H5Dget_space(h5_r);
         H5Sget_simple_extent_dims(h5_r_spc, dims, NULL);
         this->numR = dims[0] - 1; // TODO ... setting things here causes issues. ???
         H5Sclose(h5_r_spc);
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  r_jph data.\n");
+    #endif
 
         // Then we actually load the r_jph radii
         this->r_jph = (double *)malloc(dims[0] * sizeof(double));
@@ -103,6 +139,10 @@ bool DiscoData::loadFromFile(const char *filename)
         //We only load the equatorial slice!
         int k = this->numZ / 2;
 
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  p_iph size.\n");
+    #endif
+
         // ... and we get the number of phi cells per annulus
         this->Np = (int *)malloc(this->numR * sizeof(int));
         hid_t h5_Np = H5Dopen1(h5gridgroup, "Np");
@@ -111,12 +151,21 @@ bool DiscoData::loadFromFile(const char *filename)
         glo_size[0] = this->numR; glo_size[1] = 1;
         readPatch(&h5_Np, this->Np, H5T_NATIVE_INT, start, loc_size, glo_size);
         H5Dclose(h5_Np);
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  p_iph data.\n");
+    #endif
+
 
         // ... and finally, we load the indices for the cells, into a temp array.
         pindex = (int *)malloc(this->numR * sizeof(int));
         hid_t h5_pindex = H5Dopen1(h5gridgroup, "Index");
         readPatch(&h5_pindex, pindex, H5T_NATIVE_INT, start, loc_size, glo_size);
         H5Dclose(h5_pindex);
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Opening cells.\n");
+    #endif
 
     // Then we load the information in the cells (geometry + values)
     hid_t h5_cells = H5Dopen1(h5datagroup, "Cells");
@@ -128,6 +177,10 @@ bool DiscoData::loadFromFile(const char *filename)
         this->numCells += this->Np[j];
     this->numQ = dims[1] - 1;
     H5Sclose(h5_cells_spc);
+
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Allocating cells.\n");
+    #endif
 
     // Set up minmax
     this->minmax[0] = (double *)malloc(sizeof(double) * this->numQ);
@@ -144,9 +197,13 @@ bool DiscoData::loadFromFile(const char *filename)
     start[1] = 0;
     
     for (q=0; q<this->numQ; q++) {
-        this->minmax[0][j] = DBL_MAX;
-        this->minmax[1][j] = -DBL_MAX;
+        this->minmax[0][q] = DBL_MAX;
+        this->minmax[1][q] = -DBL_MAX;
     }
+    
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Initializing cells.\n");
+    #endif
     
     count = 0;
     for (j=0; j<this->numR; j++)
@@ -164,10 +221,10 @@ bool DiscoData::loadFromFile(const char *filename)
             for (q = 0; q < this->numQ; q++)
             {
                 this->cells[q][count+i] = buffer[i * (this->numQ + 1) + q];
-                if (this->minmax[0][q] > this->cells[k][count+j]) 
-                    this->minmax[0][q] = this->cells[k][count+j];
-                if (this->minmax[1][q] < this->cells[k][count+j]) 
-                    this->minmax[1][q] = this->cells[k][count+j];
+                if (this->minmax[0][q] > this->cells[q][count+i]) 
+                    this->minmax[0][q] = this->cells[q][count+i];
+                if (this->minmax[1][q] < this->cells[q][count+i]) 
+                    this->minmax[1][q] = this->cells[q][count+i];
             }
         }
         count += Np[j];
@@ -177,6 +234,10 @@ bool DiscoData::loadFromFile(const char *filename)
     this->bounds[1] =  this->r_jph[this->numR];
     this->bounds[2] = -this->r_jph[this->numR];
     this->bounds[3] =  this->r_jph[this->numR];
+
+    #if FILEDATA_VERBOSE > 1
+    fprintf(stderr, "  Housekeeping.\n");
+    #endif
 
     // Housekeeping!
     H5Dclose(h5_cells);
@@ -319,7 +380,7 @@ int DiscoData::getValuesAtR(double x, double y, int n, std::vector<double> *xdat
 
 void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, int *ngpi)
 {
-    int i,j,c,l,v;
+    int i,j,l,v;
 
     #if FILEDATA_VERBOSE
     fprintf(stderr, "Generating grid data...\n");
@@ -404,7 +465,7 @@ void DiscoData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi
 
 //Free's only DiscoData specific elements. FileData destructor takes care
 //of the rest.
-void DiscoData::freeAll()
+void DiscoData::freeAllDisco()
 {
     if ( !this->fileLoaded ) 
         return;

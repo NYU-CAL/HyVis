@@ -134,6 +134,10 @@ void Geometry::loadGeometry(double *gp, int ngp, int nc, int *ci, int nci,
 // gpi: Grid Point Indices, indices of gp to draw
 // ngpi: length of gpi, equals twice the number of grid lines drawn.
 
+    #if GEOMETRY_VERBOSE
+    fprintf(stderr, "Geom: loadGeometry()...\n");
+    #endif
+
     int i,j, c,d;
 
     this->Ngpts = ngp;
@@ -171,6 +175,10 @@ void Geometry::loadGeometry(double *gp, int ngp, int nc, int *ci, int nci,
     free(colors);
     free(indices);
     free(gindices);
+
+    #if GEOMETRY_VERBOSE
+    fprintf(stderr, "Geom: loadGeometry()... done.\n");
+    #endif
 }
 
 void Geometry::setCmapStats(double gamma, double center, double slope)
@@ -187,6 +195,10 @@ void Geometry::cycleCmap()
 
 void Geometry::setValue(bool isLeft, int Nc, double **cells, int q)
 {
+    #if GEOMETRY_VERBOSE
+    fprintf(stderr, "Geom: setValue()...\n");
+    #endif
+
     QVector3D *colors   = (QVector3D *)malloc(sizeof(QVector3D) * Nc * 4);
 
     double x0 = this->cmap_minmax[0+2*q];
@@ -208,26 +220,22 @@ void Geometry::setValue(bool isLeft, int Nc, double **cells, int q)
     //int i, j, c=0;
     int i, c=0;
     for (i=0; i<Nc; ++i) {
-    //for (i=0; i<Nt; ++i) {
-        //for (j=1; j<Nr[i]; ++j) {
-            //double value = cells[q][i][j];
-            double value = cells[q][i];
+        double value = cells[q][i];
 
-            if (this->log) value = log10(value);
+        if (this->log) value = log10(value);
 
-            value -= x0;
-            value *= m;
+        value -= x0;
+        value *= m;
 
-            if (value < 0) value = 0;
-            if (value > 1) value = 1;
+        if (value < 0) value = 0;
+        if (value > 1) value = 1;
 
-            QVector3D col;
-            this->getCmapValue(value, &col);
-            colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
-            colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
-            colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
-            colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
-        //}
+        QVector3D col;
+        this->getCmapValue(value, &col);
+        colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
+        colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
+        colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
+        colors[c] = QVector3D(col.x(), col.y(), col.z()); c++;
     }
 
     if (isLeft) {
@@ -239,6 +247,10 @@ void Geometry::setValue(bool isLeft, int Nc, double **cells, int q)
     glBufferData(GL_ARRAY_BUFFER, this->Ndpts_tot * sizeof(QVector3D), colors, GL_STATIC_DRAW);
 
     free(colors);
+    
+    #if GEOMETRY_VERBOSE
+    fprintf(stderr, "Geom: setValue() done.\n");
+    #endif
 }
 
 void Geometry::setCmapMinmax(double **minmax, int numq)

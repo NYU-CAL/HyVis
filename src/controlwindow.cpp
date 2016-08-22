@@ -425,6 +425,10 @@ void ControlWindow::on_rotateBtn_clicked()
 
 void ControlWindow::on_fileNextBtn_clicked()
 {
+    #if CONTROLWINDOW_VERBOSE
+    fprintf(stderr, "ControlWindow: on_fileNextBtn_clicked()...\n");
+    #endif
+
     if (this->openFileIndex == -1) return;
 
     this->openFileIndex += this->ui->spinBox->value();
@@ -437,6 +441,11 @@ void ControlWindow::on_fileNextBtn_clicked()
     this->updateConfigWindow();
     this->updateVariableBtns();
     // TODO (bug fixes & features)
+    
+    #if CONTROLWINDOW_VERBOSE
+    fprintf(stderr, "ControlWindow: on_fileNextBtn_clicked() done.\n");
+    #endif
+
 }
 
 void ControlWindow::on_filePrevBtn_clicked()
@@ -676,7 +685,7 @@ void ControlWindow::on_pushButton_3_clicked()
 
 void ControlWindow::on_spinBox_editingFinished()
 {
-    fprintf(stderr,"Editing finished");
+    fprintf(stderr,"Editing finished\n");
 }
 
 void ControlWindow::on_logScaleCheckbox_clicked()

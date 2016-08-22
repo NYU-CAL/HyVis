@@ -37,8 +37,6 @@
 #ifndef DISCODATA_H
 #define DISCODATA_H
 
-#define JETDATA_VERBOSE 0
-
 #include <hdf5.h>
 #include <cstdio>
 
@@ -68,7 +66,7 @@ private:
     double *r_jph;   // An array of numR+1 radial values
     double *z_kph;   // An array of numZ+1 vertical values
     double **p_iph;  // [j][i] -> i'th azimuthal position of j'th annulus
-    void freeAll();
+    void freeAllDisco();
 };
 
 #endif // FILEDATA_H

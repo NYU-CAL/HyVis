@@ -20,6 +20,7 @@ FileData::FileData()
 
 FileData::~FileData()
 {
+    this->freeAll();
     free(this->minmax);
 }
 

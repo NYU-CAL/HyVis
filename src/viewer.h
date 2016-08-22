@@ -19,6 +19,8 @@
 #include <QWheelEvent>
 #include <QKeyEvent>
 
+#define VIEWER_VERBOSE 0
+
 class Config;
 class ControlWindow;
 

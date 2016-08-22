@@ -66,6 +66,10 @@ Viewer::~Viewer()
 
 bool Viewer::loadFile(const char *filename)
 {
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: loadFile()...\n");
+    #endif
+
     if ( !this->filedata.loadFromFile(filename) ) return false;
 
     if (this->glDoneInit) {
@@ -114,6 +118,10 @@ bool Viewer::loadFile(const char *filename)
 
     // Update the colorbar scale
     this->ctrlwin->setColorbarBounds(this->filedata.get_minmax(), this->leftDisplayVar);
+    
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: loadFile() done.\n");
+    #endif
 
     return true;
 }
@@ -225,6 +233,11 @@ void Viewer::resizeGL(int w, int h)
 
 void Viewer::paintEvent(QPaintEvent *event)
 {
+    
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: paintEvent()...\n");
+    #endif
+
     Q_UNUSED(event);
 
     QPainter p( this );
@@ -385,6 +398,10 @@ void Viewer::paintEvent(QPaintEvent *event)
     if (this->drawScale) {
         // TODO ... naive method isn't smart.
     }
+    
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: paintEvent() done.\n");
+    #endif
 }
 
 void Viewer::mousePressEvent(QMouseEvent *event)
@@ -888,6 +905,10 @@ int Viewer::get_nq()
 
 void Viewer::rescale(int i)
 {
+    
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: rescale()...\n");
+    #endif
     if ( !this->filedata.fileLoaded ) return;
 
     // Zoom to a size capable of displaying full data
@@ -912,6 +933,10 @@ void Viewer::rescale(int i)
         this->setByAxes(xmin-dx, xmax+dx, ymin-dy, ymax+dy);
         this->squareScale();
     }
+    
+    #if VIEWER_VERBOSE
+    fprintf(stderr, "Viewer: rescale() done.\n");
+    #endif
 }
 
 void Viewer::showScale(bool value)

@@ -1,6 +1,8 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
+#define GEOMETRY_VERBOSE 0
+
 #include <cmath>
 
 #include <QVector2D>

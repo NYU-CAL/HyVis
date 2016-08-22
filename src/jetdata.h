@@ -37,8 +37,6 @@
 #ifndef JETDATA_H
 #define JETDATA_H
 
-#define JETDATA_VERBOSE 0
-
 #include <hdf5.h>
 #include <cstdio>
 
@@ -67,7 +65,7 @@ private:
     int *Nr;         // An array of numTheta #-of-radial-zones values
     double *t_jph;   // An array of numTheta+1 angle values
     double **r_iph;  // [i][j] -> j'th radial position of i'th ray
-    void freeAll();
+    void freeAllJet();
 
 };
 

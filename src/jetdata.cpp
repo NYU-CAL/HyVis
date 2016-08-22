@@ -26,7 +26,7 @@ JetData::JetData()
 
 JetData::~JetData()
 {
-    this->freeAll();
+    this->freeAllJet();
 }
 
 bool JetData::loadFromFile(const char *filename)
@@ -59,6 +59,7 @@ bool JetData::loadFromFile(const char *filename)
 
     // For alpha purposes, we can assume this is the commit point -- and we'll free all memory...
     this->fileLoaded = false;
+    this->freeAllJet();
     this->freeAll();
 
     // First step is loading the grid information
@@ -384,7 +385,7 @@ void JetData::genGridData(double **gp, int *ngp, int **ci, int *nci, int **gpi, 
 
 //Free's only JetData specific elements. FileData destructor takes care
 //of the rest.
-void JetData::freeAll()
+void JetData::freeAllJet()
 {
     if ( !this->fileLoaded ) 
         return;
