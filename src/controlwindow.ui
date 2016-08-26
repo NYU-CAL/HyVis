@@ -372,6 +372,14 @@
           </property>
          </widget>
         </item>
+	<item>
+         <widget class="QCheckBox" name="UnitCheckbox">
+          <property name="text">
+           <string>CGS</string>
+          </property>
+         </widget>
+        </item>
+
        </layout>
       </item>
       <item>

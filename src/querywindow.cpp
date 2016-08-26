@@ -50,9 +50,9 @@ void QueryWindow::setPosition(double p, double q, double r)
     this->q = q;
     this->r = r;
     QString P,Q,R;
-    P.sprintf("%6.2f", p);
-    Q.sprintf("%6.2f", q);
-    R.sprintf("%6.2f", r);
+    P.sprintf("%.4e", p);
+    Q.sprintf("%.4e", q);
+    R.sprintf("%.4e", r);
     this->ui->editP->setText( P );
     this->ui->editQ->setText( Q );
     this->ui->editR->setText( R );
@@ -61,6 +61,7 @@ void QueryWindow::setPosition(double p, double q, double r)
 void QueryWindow::updateNumValues(int n, std::vector<QString> names)
 {
     int i;
+    if( n > 5) n = 5;
     // Remove old elements
     for (i=0; i<this->numWdgtsDisplayed; ++i) {
         this->ui->horValLayout->removeWidget(this->wdgts.at(i));
@@ -81,7 +82,7 @@ void QueryWindow::setValues(double *values)
     int i;
     for (i=0; i<this->numValues; ++i) {
         QString v;
-        v.sprintf("%6.2f", values[i]);
+        v.sprintf("%.9e", values[i]);
         this->ledts.at(i)->setText(v);
     }
 }

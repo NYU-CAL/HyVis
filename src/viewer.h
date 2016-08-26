@@ -39,6 +39,7 @@ public:
     ControlWindow *ctrlwin;
 
     bool loadFile(const char *filename);
+    bool updateFile();
     void setByAxes(double x0, double x1, double y0, double y1);
     void setCenter(double x, double y);
     void setXScale(double xscale);
@@ -69,6 +70,7 @@ public:
     void cycleCmap();
 
     void set1DPlot(bool visible, bool isTheta);
+    void set1DScale(bool visible, bool isScale);
     void replot1DPlot();
 
     void savePPM(const char *fname);
@@ -103,6 +105,8 @@ private:
     double pointScale[2];
     double clickPoint[2];
     double clickCenter[2];
+    double Plot1DSet[2];
+    double MousePos[2];
     int bgColor[3];
 
     bool drawBox;

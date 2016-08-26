@@ -57,7 +57,11 @@ Viewer::Viewer(QWidget *parent) :
     this->plotLineData[0] = 0.0;
     this->plotLineData[1] = 1.0;
     this->plotLineData[2] = 1.0;
-
+    this->Plot1DSet[0] = 1.0;
+    this->Plot1DSet[1] = 1.0;
+    // add mouse position recorder; so that next file could update query window
+    this->MousePos[0] = 0.5;
+    this->MousePos[1] = 0.5;
 }
 
 Viewer::~Viewer()
@@ -67,7 +71,6 @@ Viewer::~Viewer()
 bool Viewer::loadFile(const char *filename)
 {
     if ( !this->filedata.loadFromFile(filename) ) return false;
-
     if (this->glDoneInit) {
         this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
         this->g.loadGeometry(this->filedata.get_tjph(),
@@ -94,6 +97,86 @@ bool Viewer::loadFile(const char *filename)
                      this->filedata.get_cells(),
                      this->rightDisplayVar);
 
+    // Updates for the query window
+    if (this->qw != NULL) this->qw->updateNumValues(this->filedata.get_nq(), this->ctrlwin->getVarnames());
+    if (this->valuesAtPointer != NULL) free(this->valuesAtPointer);
+    this->valuesAtPointer = (double *)malloc(this->filedata.get_nq() * sizeof(double));
+
+    /***************/
+
+    if(this->qw != NULL) {
+      double ttx, tty;
+      ttx = this->MousePos[0];
+      tty = this->MousePos[1];
+
+    // Update query window
+    if (this->isMirrored && tty < 0) {
+        tty = -tty;
+        this->qw->setPosition(ttx, tty, 0.0);
+        if (this->valuesAtPointer != NULL) {
+            this->filedata.getValuesAt(ttx, tty, this->valuesAtPointer);
+            this->qw->setValues(this->valuesAtPointer);
+        }
+        tty = -tty;
+    } else {
+        this->qw->setPosition(ttx, tty, 0.0);
+        if (this->valuesAtPointer != NULL) {
+            this->filedata.getValuesAt(ttx, tty, this->valuesAtPointer);
+            this->qw->setValues(this->valuesAtPointer);
+        }
+    }
+    }
+
+    /************/
+    if (this->drawPlotLine) this->replot1DPlot();
+    this->repaint();
+
+
+    // Updates for the control window //
+
+    // Update axis position
+    this->ctrlwin->updateAxesInfo(
+        this->pointCenter[0] - this->pointScale[0],
+        this->pointCenter[0] + this->pointScale[0],
+        this->pointCenter[1] - this->pointScale[1],
+        this->pointCenter[1] + this->pointScale[1]);
+
+    // Update the colorbar scale
+    this->ctrlwin->setColorbarBounds(this->filedata.get_minmax(), this->leftDisplayVar);
+
+    return true;
+}
+
+bool Viewer::updateFile()
+{
+  
+  if ( !this->filedata.ToCGS() ) return false;
+  if (this->glDoneInit) {
+    this->g.setCmapMinmax(this->filedata.get_minmax(), this->filedata.get_nq());
+  //   this->g.loadGeometry(this->filedata.get_tjph(),
+  // 			 this->filedata.get_riph(),
+  // 			 this->filedata.get_nt(),
+  // 			 this->filedata.get_nr(),
+  // 			 this->filedata.get_nc());
+  // }
+  }
+    // Updates for the l & r values, if uninitialized
+    if (this->leftDisplayVar == -1) this->leftDisplayVar = 0;
+    if (this->rightDisplayVar == -1) this->rightDisplayVar = 0;
+
+    this->g.setValue(true,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->leftDisplayVar);
+    this->g.setValue(false,
+                     this->filedata.get_nt(),
+                     this->filedata.get_nr(),
+                     this->filedata.get_nc(),
+                     this->filedata.get_cells(),
+                     this->rightDisplayVar);
+    //this->repaint();
     // Updates for the query window
     if (this->qw != NULL) this->qw->updateNumValues(this->filedata.get_nq(), this->ctrlwin->getVarnames());
     if (this->valuesAtPointer != NULL) free(this->valuesAtPointer);
@@ -395,7 +478,9 @@ void Viewer::mousePressEvent(QMouseEvent *event)
                            &(this->drawBoxCoordinates[0]),
                            &(this->drawBoxCoordinates[1]));
     } else if (this->input[KEY_CTRL] && !this->input[KEY_SHIFT]) {
-        this->update1DPlot(event->pos().x(), event->pos().y(), true);
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();
+      this->update1DPlot(event->pos().x(), event->pos().y(), true);
     }
 
     double tx, ty;
@@ -435,7 +520,9 @@ void Viewer::mouseReleaseEvent(QMouseEvent *event)
     }
 
     if (this->input[KEY_CTRL]) {
-        this->update1DPlot(event->pos().x(), event->pos().y(), true);
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();
+      this->update1DPlot(event->pos().x(), event->pos().y(), true);
     }
 
     switch (event->button()) {
@@ -458,7 +545,8 @@ void Viewer::mouseMoveEvent(QMouseEvent *event)
 
     double ttx, tty;
     this->screenToData(event->pos().x(), event->pos().y(), &ttx, &tty);
-
+    this->MousePos[0] = ttx;
+    this->MousePos[1] = tty;
     // Update query window
     if (this->isMirrored && tty < 0) {
         tty = -tty;
@@ -485,6 +573,8 @@ void Viewer::mouseMoveEvent(QMouseEvent *event)
         this->drawBoxCoordinates[3] = tty;
         this->repaint();
     } else if (this->input[KEY_CTRL] && !this->input[KEY_SHIFT] && (event->buttons() & Qt::LeftButton)) {
+      this->Plot1DSet[0] = event->pos().x();
+      this->Plot1DSet[1] = event->pos().y();                                    
         this->update1DPlot(event->pos().x(), event->pos().y(), false);
 
     } else {
@@ -990,22 +1080,49 @@ void Viewer::set1DPlot(bool visible, bool isTheta)
 
 }
 
+void Viewer::set1DScale(bool visible, bool isScale)
+{
+    // this->drawPlotLine = visible;
+    // if (visible) this->plotIsTheta = isTheta;
+
+    this->repaint();
+
+}
+
+// void Viewer::replot1DPlot()
+// {
+//     if (this->plotIsTheta) {
+//         double y = 1.0 * cos(this->plotLineData[2]);
+//         this->update1DPlot(1.0, y, true);
+//     } else {
+//         double y = this->plotLineData[2] * this->plotLineData[2];
+//         this->update1DPlot(0.0, y, true);
+//     }
+// }
+
 void Viewer::replot1DPlot()
 {
     if (this->plotIsTheta) {
-        double y = 1.0 * cos(this->plotLineData[2]);
-        this->update1DPlot(1.0, y, true);
+        double x = this->Plot1DSet[0];
+        double y = this->Plot1DSet[1];
+//std::cout << x << y << std::endl;
+	this->update1DPlot(x, y, true);
+        //double y = 1.0 * cos(this->plotLineData[2]);
+        //this->update1DPlot(1.0, y, true);
     } else {
-        double y = this->plotLineData[2] * this->plotLineData[2];
-        this->update1DPlot(0.0, y, true);
+      double x = this->Plot1DSet[0];
+      double y = this->Plot1DSet[1];
+      this->update1DPlot(x, y, true);
+        // double y = this->plotLineData[2] * this->plotLineData[2];
+        // this->update1DPlot(0.0, y, true);
     }
 }
 
 void Viewer::savePPM(const char *fname)
 {
     int i,j;
-    int dimx = this->width();
-    int dimy = this->height();
+    int dimx = 2*this->width();
+    int dimy = 2*this->height();
     float *pixels = new float[3*dimx*dimy];
 
     glReadBuffer(GL_BACK);

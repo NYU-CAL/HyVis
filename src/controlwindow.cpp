@@ -359,6 +359,16 @@ bool ControlWindow::toggleLogscale()
         return true;
     }
 }
+// bool ControlWindow::toggleUnit()
+// {
+//     if (this->ui->UnitCheckbox->isChecked()) {
+//         this->ui->UnitCheckbox->setChecked(false);
+//         return false;
+//     } else {
+//         this->ui->UnitCheckbox->setChecked(true);
+//         return true;
+//     }
+// }
 
 void ControlWindow::setColorbarBounds(double **minmax, int var)
 {
@@ -436,6 +446,7 @@ void ControlWindow::on_fileNextBtn_clicked()
     // Other updates
     this->updateConfigWindow();
     this->updateVariableBtns();
+
     // TODO (bug fixes & features)
 }
 
@@ -469,6 +480,13 @@ void ControlWindow::on_view1dRBtn_clicked()
 
 void ControlWindow::on_view1dBtn_clicked()
 {
+    this->viewer->set1DPlot(false, false);
+    this->plt->hide();
+}
+void ControlWindow::on_view1dScaleBtn_clicked()
+{
+  // this->viewer->set1DScale(false, false);
+  // this->plt->show();
     this->viewer->set1DPlot(false, false);
     this->plt->hide();
 }
@@ -685,6 +703,19 @@ void ControlWindow::on_logScaleCheckbox_clicked()
         this->viewer->setLogscale(true);
     } else {
         this->viewer->setLogscale(false);
+    }
+}
+
+void ControlWindow::on_UnitCheckbox_clicked()
+{
+    if (this->ui->UnitCheckbox->isChecked()) {
+      this->viewer->updateFile();
+      this->updateConfigWindow();
+      this->updateVariableBtns();
+    } else {
+      this->viewer->loadFile(this->openFilename.toStdString().c_str());
+      this->updateConfigWindow();
+      this->updateVariableBtns();
     }
 }
 
